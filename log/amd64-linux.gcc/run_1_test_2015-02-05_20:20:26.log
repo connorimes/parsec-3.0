@@ -1,0 +1,23 @@
+[PARSEC] [========== PARSEC 3.0-beta-20130728 RUN LOGFILE ==========]
+
+[PARSEC] Run with amd64-linux.gcc binaries and input test started on Thu Feb 5 20:20:26 EST 2015.
+[PARSEC] Benchmarks to run:  parsec.netdedup
+
+[PARSEC] [========== Running benchmark parsec.netdedup [1] ==========]
+[PARSEC] Deleting old run directory.
+[PARSEC] Setting up run directory.
+[PARSEC] Unpacking benchmark input 'test'.
+test.dat
+[PARSEC] Running 'time /memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/netapps/netdedup/inst/amd64-linux.gcc/bin/run.sh 1 test':
+[PARSEC] [---------- Beginning of output ----------]
+Running
+/memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/netapps/netdedup/inst/amd64-linux.gcc/bin/netdedup_client -i test.dat &
+/memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/netapps/netdedup/inst/amd64-linux.gcc/bin/netdedup -c -v -t 1 -o output.dat.ddp
+/memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/netapps/netdedup/inst/amd64-linux.gcc/bin/run.sh: line 61:  4912 Floating point exception/memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/netapps/netdedup/inst/amd64-linux.gcc/bin/netdedup_client -i test.dat
+/memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/netapps/netdedup/inst/amd64-linux.gcc/bin/run.sh: line 61:  4913 Floating point exception/memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/netapps/netdedup/inst/amd64-linux.gcc/bin/netdedup -c -v -t 1 -o output.dat.ddp
+
+real	0m0.015s
+user	0m0.000s
+sys	0m0.017s
+[PARSEC] [----------    End of output    ----------]
+[PARSEC] Done.

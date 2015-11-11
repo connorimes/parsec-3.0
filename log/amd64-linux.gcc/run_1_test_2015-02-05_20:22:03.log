@@ -1,0 +1,60 @@
+[PARSEC] [========== PARSEC 3.0-beta-20130728 RUN LOGFILE ==========]
+
+[PARSEC] Run with amd64-linux.gcc binaries and input test started on Thu Feb 5 20:22:03 EST 2015.
+[PARSEC] Benchmarks to run:  parsec.netdedup
+
+[PARSEC] [========== Running benchmark parsec.netdedup [1] ==========]
+[PARSEC] Deleting old run directory.
+[PARSEC] Setting up run directory.
+[PARSEC] Unpacking benchmark input 'test'.
+test.dat
+[PARSEC] Running 'time /memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/netapps/netdedup/inst/amd64-linux.gcc/bin/run.sh 1 test':
+[PARSEC] [---------- Beginning of output ----------]
+Running
+/memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/netapps/netdedup/inst/amd64-linux.gcc/bin/netdedup_client -i test.dat &
+/memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/netapps/netdedup/inst/amd64-linux.gcc/bin/netdedup -c -v -t 1 -o output.dat.ddp
+PARSEC Benchmark Suite Version 3.0-beta-20130728
+[netdedup.server]: accept client
+[netdedup.server]: data transfer size = 6B
+
+============================================================
+  Enter PARSEC TCPIP ROI 
+============================================================
+anchorcount = 1
+
+------------------------------------------------------------
+      Execution Statistics of u-TCP/IP Stack 
+------------------------------------------------------------
+There are 10 threads, 5 involved to u-TCP/IP stack
+(u-TCP/IP_Threads) / (Total_Threads) = 50.00%
+
+ROI_RUN_TIME =   0.10s
+
+     THREAD_TYPE         ACTIVE_TIME           ACTIVE(%)
+        Rx_Tcpip              0.000s                0.01
+         Tx_Link              0.000s                0.00
+         Rx_Link              0.000s                0.01
+           Timer              0.000s                0.08
+          Socket              0.000s                0.38
+------------------------------------------------------------
+
+============================================================
+  Exit PARSEC TCPIP ROI 
+============================================================
+
+Total input size:                        6.00 Bytes
+Total output size:                      28.00 Bytes
+Effective compression factor:            0.21x
+
+Mean data chunk size:                    0.06 KB (stddev: 0.00 KB)
+Amount of duplicate chunks:              0.00%
+Data size after deduplication:           6.00 Bytes (compression factor: 1.00x)
+Data size after compression:            14.00 Bytes (compression factor: 0.43x)
+Output overhead:                        50.00%
+[netdedup.client]: Send data to server ok!
+
+real	0m3.119s
+user	0m0.004s
+sys	0m0.013s
+[PARSEC] [----------    End of output    ----------]
+[PARSEC] Done.

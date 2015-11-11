@@ -1,0 +1,23 @@
+[PARSEC] [========== PARSEC 3.0-beta-20130728 RUN LOGFILE ==========]
+
+[PARSEC] Run with amd64-linux.gcc binaries and input test started on Thu Feb 5 20:57:18 EST 2015.
+[PARSEC] Benchmarks to run:  parsec.facesim
+
+[PARSEC] [========== Running benchmark parsec.facesim [1] ==========]
+[PARSEC] Setting up run directory.
+[PARSEC] No archive for input 'test' available, skipping input setup.
+[PARSEC] Running 'time /memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/apps/facesim/inst/amd64-linux.gcc/bin/facesim -h':
+[PARSEC] [---------- Beginning of output ----------]
+PARSEC Benchmark Suite Version 3.0-beta-20130728
+Usage: /memex/ybao/ready_for_backup/parsec-3.0-working-dir/parsec-3.0-release/parsec-3.0-150205/parsec-3.0/pkgs/apps/facesim/inst/amd64-linux.gcc/bin/facesim [-restart <int>] [-lastframe <int>] [-threads <int>] [-timing] 
+-restart    <no description available> (default 0)
+-lastframe  <no description available> (default 300)
+-threads    <no description available> (default 1)
+-timing     <no description available>
+
+
+real	0m0.004s
+user	0m0.000s
+sys	0m0.003s
+[PARSEC] [----------    End of output    ----------]
+[PARSEC] Done.
