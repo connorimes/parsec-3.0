@@ -21,8 +21,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
  *****************************************************************************/
 
-#include <he-profiler/he-profiler.h>
-#include "profiler-categories.h"
 #include "common.h"
 
 #ifdef HAVE_MMX
@@ -376,13 +374,10 @@ static void x264_pixel_sad_x3_##size( uint8_t *fenc, uint8_t *pix0, uint8_t *pix
 }\
 static void x264_pixel_sad_x4_##size( uint8_t *fenc, uint8_t *pix0, uint8_t *pix1, uint8_t *pix2, uint8_t *pix3, int i_stride, int scores[4] )\
 {\
-    he_profiler_event event;\
-    he_profiler_event_begin(&event);\
     scores[0] = x264_pixel_sad_##size( fenc, FENC_STRIDE, pix0, i_stride );\
     scores[1] = x264_pixel_sad_##size( fenc, FENC_STRIDE, pix1, i_stride );\
     scores[2] = x264_pixel_sad_##size( fenc, FENC_STRIDE, pix2, i_stride );\
     scores[3] = x264_pixel_sad_##size( fenc, FENC_STRIDE, pix3, i_stride );\
-    he_profiler_event_end(PIXEL_SAD_X4_SIZE, PIXEL_SAD_X4_SIZE, 1, &event);\
 }
 
 SAD_X( 16x16 )
