@@ -27,6 +27,9 @@
 #include "FlexLib.h"
 #include "system.h"
 
+#include <he-profiler/he-profiler.h>
+#include "profiler-categories.h"
+
 #ifndef uint
 #define uint unsigned int
 #endif
@@ -184,6 +187,8 @@ bool TrackingModel::GetObservation(float timeval)
 
 bool TrackingModel::OutputBMP(const std::vector<float> &pose, int frame)
 {	
+	he_profiler_event event;
+	he_profiler_event_begin(&event);
 	vector<string> ImageFiles(mNCameras);
 	for(int i = 0; i < mNCameras; i++)													
 		ImageFiles[i] = mPath + "CAM" + str(i + 1) + DIR_SEPARATOR + "image" + str(frame, 4) + ".bmp";
@@ -218,5 +223,7 @@ bool TrackingModel::OutputBMP(const std::vector<float> &pose, int frame)
 		}
 	}
 	string outFname = mPath + "Result" + str(frame, 4) + ".bmp";
-	return FlexSaveBMP(outFname.c_str(), result);
+	bool ret = FlexSaveBMP(outFname.c_str(), result);
+	he_profiler_event_end(OUTPUT_BMP, OUTPUT_BMP, 1, &event);
+	return ret;
 }

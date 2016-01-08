@@ -1,0 +1,3 @@
+#!/bin/bash
+
+source ${PARSECDIR}/pkgs/tools/libtool/parsec/gcc-hooks.bldconf

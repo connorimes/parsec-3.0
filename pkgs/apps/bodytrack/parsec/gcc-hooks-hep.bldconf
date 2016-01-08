@@ -1,0 +1,3 @@
+#!/bin/bash
+
+source ${PARSECDIR}/pkgs/apps/bodytrack/parsec/gcc-hooks.bldconf

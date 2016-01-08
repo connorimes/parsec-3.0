@@ -65,6 +65,15 @@ using namespace tbb;
 #include "TrackingModel.h"
 #include "system.h"
 
+#include <he-profiler/he-profiler.h>
+#include "profiler-categories.h"
+
+#define PROFILER_GENERATE_NAME(STRING) #STRING,
+
+static const char* PROFILER_NAME[] = {
+    PROFILER_FOREACH(PROFILER_GENERATE_NAME)
+};
+
 
 using namespace std;
 
@@ -78,9 +87,13 @@ bool num(const string s, T &n)
 
 //write a given pose to a stream
 inline void WritePose(ostream &f, vector<float> &pose)
-{	for(int i = 0; i < (int)pose.size(); i++)
+{
+	he_profiler_event event;
+	he_profiler_event_begin(&event);
+	for(int i = 0; i < (int)pose.size(); i++)
 		f << pose[i] << " ";
 	f << endl;
+	he_profiler_event_end(WRITE_POSE, WRITE_POSE, 1, &event);
 }
 
 bool ProcessCmdLine(int argc, char **argv, string &path, int &cameras, int &frames, int &particles, int &layers, int &threads, int &threadModel, bool &OutputBMP)
@@ -371,6 +384,11 @@ int main(int argc, char **argv)
 	bool OutputBMP;
 	int cameras, frames, particles, layers, threads, threadModel;								//process command line parameters to get path, cameras, and frames
 
+	if (he_profiler_init(NUM_PROFILERS, APPLICATION, PROFILER_NAME, 20, "BODYTRACK_", NULL)) {
+		exit(1);
+	}
+	printf("Profiling initialized\n");
+
 #ifdef PARSEC_VERSION
 #define __PARSEC_STRING(x) #x
 #define __PARSEC_XSTRING(x) __PARSEC_STRING(x)
@@ -452,6 +470,9 @@ int main(int argc, char **argv)
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_bench_end();
 #endif
+
+	he_profiler_finish();
+	printf("Profiling finished\n");
 
 	return 0;
 }

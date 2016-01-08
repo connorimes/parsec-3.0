@@ -24,6 +24,8 @@
 #include <math.h>
 
 #include "common/common.h"
+#include <he-profiler/he-profiler.h>
+#include "common/profiler-categories.h"
 #ifndef _MSC_VER
 #include "config.h"
 #endif
@@ -215,6 +217,9 @@ void x264_sps_init( x264_sps_t *sps, int i_id, x264_param_t *param )
 
 void x264_sps_write( bs_t *s, x264_sps_t *sps )
 {
+    he_profiler_event event;
+    he_profiler_event_begin(&event);
+
     bs_write( s, 8, sps->i_profile_idc );
     bs_write( s, 1, sps->b_constraint_set0 );
     bs_write( s, 1, sps->b_constraint_set1 );
@@ -364,6 +369,8 @@ void x264_sps_write( bs_t *s, x264_sps_t *sps )
     }
 
     bs_rbsp_trailing( s );
+
+    he_profiler_event_end(SPS_WRITE, SPS_WRITE, 1, &event);
 }
 
 void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *sps )
@@ -428,6 +435,9 @@ void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *
 
 void x264_pps_write( bs_t *s, x264_pps_t *pps )
 {
+    he_profiler_event event;
+    he_profiler_event_begin(&event);
+
     bs_write_ue( s, pps->i_id );
     bs_write_ue( s, pps->i_sps_id );
 
@@ -470,6 +480,8 @@ void x264_pps_write( bs_t *s, x264_pps_t *pps )
     }
 
     bs_rbsp_trailing( s );
+
+    he_profiler_event_end(PPS_WRITE, PPS_WRITE, 1, &event);
 }
 
 void x264_sei_version_write( x264_t *h, bs_t *s )

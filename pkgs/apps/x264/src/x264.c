@@ -47,6 +47,15 @@
 #include <hooks.h>
 #endif
 
+#include <he-profiler/he-profiler.h>
+#include "common/profiler-categories.h"
+
+#define PROFILER_GENERATE_NAME(STRING) #STRING,
+
+static const char* PROFILER_NAME[] = {
+    PROFILER_FOREACH(PROFILER_GENERATE_NAME)
+};
+
 uint8_t *mux_buffer = NULL;
 int mux_buffer_size = 0;
 
@@ -95,6 +104,11 @@ int main( int argc, char **argv )
     cli_opt_t opt;
     int ret;
 
+    if (he_profiler_init(NUM_PROFILERS, APPLICATION, PROFILER_NAME, 20, "X264_", NULL)) {
+        exit(1);
+    }
+    printf("Profiling initialized\n");
+
 #ifdef PARSEC_VERSION
 #define __PARSEC_STRING(x) #x
 #define __PARSEC_XSTRING(x) __PARSEC_STRING(x)
@@ -137,6 +151,9 @@ int main( int argc, char **argv )
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_bench_end();
 #endif
+
+    he_profiler_finish();
+    printf("Profiling finished\n");
 
     return ret;
 }
@@ -776,6 +793,8 @@ static void parse_qpfile( cli_opt_t *opt, x264_picture_t *pic, int i_frame )
 
 static int  Encode_frame( x264_t *h, hnd_t hout, x264_picture_t *pic )
 {
+    he_profiler_event event;
+    he_profiler_event_begin(&event);
     x264_picture_t pic_out;
     x264_nal_t *nal;
     int i_nal, i;
@@ -803,6 +822,8 @@ static int  Encode_frame( x264_t *h, hnd_t hout, x264_picture_t *pic )
     }
     if (i_nal)
         p_set_eop( hout, &pic_out );
+
+    he_profiler_event_end(ENCODE_FRAME, ENCODE_FRAME, 1, &event);
 
     return i_file;
 }
@@ -855,6 +876,9 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
     /* Encode frames */
     for( i_frame = 0, i_file = 0; b_ctrl_c == 0 && (i_frame < i_frame_total || i_frame_total == 0); )
     {
+        he_profiler_event event;
+        he_profiler_event_begin(&event);
+
         if( p_read_frame( &pic, opt->hin, i_frame + opt->i_seek ) )
             break;
 
@@ -894,6 +918,8 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
             SetConsoleTitle( buf );
             fflush( stderr ); // needed in windows
         }
+
+        he_profiler_event_end(FRAME, FRAME, 1, &event);
     }
     /* Flush delayed B-frames */
     do {

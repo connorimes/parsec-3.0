@@ -36,6 +36,9 @@
 #include "common/visualize.h"
 #endif
 
+#include <he-profiler/he-profiler.h>
+#include "common/profiler-categories.h"
+
 //#define DEBUG_MB_TYPE
 
 #define NALU_OVERHEAD 5 // startcode + NAL type costs 5 bytes per frame
@@ -907,6 +910,9 @@ static inline void x264_reference_build_list( x264_t *h, int i_poc )
     int i;
     int b_ok;
 
+    he_profiler_event event;
+    he_profiler_event_begin(&event);
+
     /* build ref list 0/1 */
     h->i_ref0 = 0;
     h->i_ref1 = 0;
@@ -971,6 +977,8 @@ static inline void x264_reference_build_list( x264_t *h, int i_poc )
     assert( h->i_ref0 + h->i_ref1 <= 16 );
     h->mb.pic.i_fref[0] = h->i_ref0;
     h->mb.pic.i_fref[1] = h->i_ref1;
+
+    he_profiler_event_end(REFERENCE_BUILD_LIST, REFERENCE_BUILD_LIST, 1, &event);
 }
 
 static void x264_fdec_filter_row( x264_t *h, int mb_y )
@@ -1699,6 +1707,9 @@ static void x264_encoder_frame_end( x264_t *h, x264_t *thread_current,
                                     x264_nal_t **pp_nal, int *pi_nal,
                                     x264_picture_t *pic_out )
 {
+    he_profiler_event event;
+    he_profiler_event_begin(&event);
+
     int i, i_list;
     char psz_message[80];
 
@@ -1830,6 +1841,8 @@ static void x264_encoder_frame_end( x264_t *h, x264_t *thread_current,
     x264_thread_sync_stat( h->thread[0], h );
     // for the use of the next frame
     x264_thread_sync_stat( thread_current, h );
+
+    he_profiler_event_end(ENCODER_FRAME_END, ENCODER_FRAME_END, 1, &event);
 
 #ifdef DEBUG_MB_TYPE
 {

@@ -23,6 +23,8 @@
  *****************************************************************************/
 
 #include "common.h"
+#include <he-profiler/he-profiler.h>
+#include "profiler-categories.h"
 
 #define ALIGN(x,a) (((x)+((a)-1))&~((a)-1))
 
@@ -182,6 +184,9 @@ void x264_frame_delete( x264_frame_t *frame )
 
 int x264_frame_copy_picture( x264_t *h, x264_frame_t *dst, x264_picture_t *src )
 {
+    he_profiler_event event;
+    he_profiler_event_begin(&event);
+
     int i_csp = src->img.i_csp & X264_CSP_MASK;
     int i;
     if( i_csp != X264_CSP_I420 && i_csp != X264_CSP_YV12 )
@@ -208,6 +213,9 @@ int x264_frame_copy_picture( x264_t *h, x264_frame_t *dst, x264_picture_t *src )
         }
         h->mc.plane_copy( dst->plane[i], dst->i_stride[i], plane, stride, width, height );
     }
+
+    he_profiler_event_end(FRAME_COPY_PICTURE, FRAME_COPY_PICTURE, 1, &event);
+
     return 0;
 }
 
@@ -954,6 +962,9 @@ x264_frame_t *x264_frame_pop_unused( x264_t *h )
 
 void x264_frame_sort( x264_frame_t **list, int b_dts )
 {
+    he_profiler_event event;
+    he_profiler_event_begin(&event);
+
     int i, b_ok;
     do {
         b_ok = 1;
@@ -970,4 +981,6 @@ void x264_frame_sort( x264_frame_t **list, int b_dts )
             }
         }
     } while( !b_ok );
+
+    he_profiler_event_end(FRAME_SORT, FRAME_SORT, 1, &event);
 }

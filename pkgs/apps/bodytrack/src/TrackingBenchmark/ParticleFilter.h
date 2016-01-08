@@ -41,6 +41,9 @@
 #include "RandomGenerator.h"
 #include "AnnealingFactor.h"
 
+#include <he-profiler/he-profiler.h>
+#include "profiler-categories.h"
+
 #ifndef uint
 #define uint unsigned int
 #endif
@@ -245,6 +248,8 @@ void ParticleFilter<T>::GenerateNewParticles(int k)
 template<class T>
 bool ParticleFilter<T>::Update(fpType timeval)								//weights have already been computed from previous step or initialization
 {						
+	he_profiler_event event;
+	he_profiler_event_begin(&event);
 	if(!mInitialized)														//check for proper initialization
 	{	std::cout << "Update Error : Particles not initialized" << std::endl; 
 		return false;
@@ -266,6 +271,7 @@ bool ParticleFilter<T>::Update(fpType timeval)								//weights have already bee
 		}
 		mParticles = mNewParticles;											//save new particle set
 	}
+	he_profiler_event_end(PARTICLE_FILTER_UPDATE, PARTICLE_FILTER_UPDATE, 1, &event);
 	return true;
 }
 
@@ -273,10 +279,13 @@ bool ParticleFilter<T>::Update(fpType timeval)								//weights have already bee
 template<class T> 
 void ParticleFilter<T>::Estimate(Vectorf &estimate)
 {
+	he_profiler_event event;
+	he_profiler_event_begin(&event);
 	estimate.assign(mParticles[0].size(), 0);								//clear estimate values
 	for(uint i = 0; i < mParticles.size(); i++)								//calculate expected value 
 		for(uint j = 0; j < estimate.size(); j++)
 			estimate[j] += mParticles[i][j] * mWeights[i];
+	he_profiler_event_end(PARTICLE_FILTER_ESTIMATE, PARTICLE_FILTER_ESTIMATE, 1, &event);
 }
 
 #endif
