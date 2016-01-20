@@ -14,6 +14,20 @@
 #include <hooks.h>
 #endif
 
+#define HB_ENERGY_IMPL
+#include <heartbeats/hb-energy.h>
+#include <heartbeats/heartbeat-accuracy-power.h>
+#include <poet/poet.h>
+#include <poet/poet_config.h>
+
+#define PREFIX "FACESIM"
+#define USE_POET // Power and performance control
+
+heartbeat_t* heart;
+poet_state* state;
+static poet_control_state_t* control_states;
+static poet_cpu_state_t* cpu_states;
+
 using namespace PhysBAM;
 
 #ifdef ENABLE_PTHREADS
@@ -23,6 +37,72 @@ bool PHYSBAM_THREADED_RUN = true;
 //Use multi-threaded code
 bool PHYSBAM_THREADED_RUN = false;
 #endif //ENABLE_PTHREADS
+
+static inline void hb_poet_init() {
+    float min_heartrate;
+    float max_heartrate;
+    int window_size;
+    double power_target;
+    unsigned int nstates;
+
+    if(getenv(PREFIX"_MIN_HEART_RATE") == NULL) {
+      min_heartrate = 0.0;
+    } else {
+      min_heartrate = atof(getenv(PREFIX"_MIN_HEART_RATE"));
+    }
+    if(getenv(PREFIX"_MAX_HEART_RATE") == NULL) {
+      max_heartrate = 100.0;
+    } else {
+      max_heartrate = atof(getenv(PREFIX"_MAX_HEART_RATE"));
+    }
+    if(getenv(PREFIX"_WINDOW_SIZE") == NULL) {
+      window_size = 30;
+    } else {
+      window_size = atoi(getenv(PREFIX"_WINDOW_SIZE"));
+    }
+    if(getenv(PREFIX"_POWER_TARGET") == NULL) {
+      power_target = 70;
+    } else {
+      power_target = atof(getenv(PREFIX"_POWER_TARGET"));
+    }
+
+    printf("init heartbeat with %f %f %d\n", min_heartrate, max_heartrate, window_size);
+    heart = heartbeat_acc_pow_init(window_size, 100, "heartbeat.log",
+                                   min_heartrate, max_heartrate,
+                                   0, 100,
+                                   1, hb_energy_impl_alloc(), power_target, power_target);
+    if (heart == NULL) {
+      fprintf(stderr, "Failed to init heartbeat.\n");
+      exit(1);
+    }
+#ifdef USE_POET
+    if (get_control_states(NULL, &control_states, &nstates)) {
+      fprintf(stderr, "Failed to load control states.\n");
+      exit(1);
+    }
+    if (get_cpu_states(NULL, &cpu_states, &nstates)) {
+      fprintf(stderr, "Failed to load cpu states.\n");
+      exit(1);
+    }
+    state = poet_init(heart, nstates, control_states, cpu_states, &apply_cpu_config, &get_current_cpu_state, 1, "poet.log");
+    if (state == NULL) {
+      fprintf(stderr, "Failed to init poet.\n");
+      exit(1);
+    }
+#endif
+   printf("heartbeat init'd\n");
+
+}
+
+static inline void hb_poet_finish() {
+#ifdef USE_POET
+    poet_destroy(state);
+    free(control_states);
+    free(cpu_states);
+#endif
+    heartbeat_finish(heart);
+    printf("heartbeat finished\n");
+}
 
 int main (int argc, char* argv[])
 {
@@ -82,6 +162,8 @@ int main (int argc, char* argv[])
 		exit (1);
 	}
 
+	hb_poet_init();
+
 	THREAD_DIVISION_PARAMETERS<float>& parameters = *THREAD_DIVISION_PARAMETERS<float>::Singleton();
 	parameters.grid_divisions_3d = VECTOR_3D<int> (5, 5, 5);
 
@@ -90,6 +172,8 @@ int main (int argc, char* argv[])
 	driver.Execute_Main_Program();
 
 	delete (THREAD_POOL::Singleton());
+
+	hb_poet_finish();
 
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_bench_end();

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+source ${PARSECDIR}/pkgs/apps/ferret/parsec/gcc-hooks.bldconf

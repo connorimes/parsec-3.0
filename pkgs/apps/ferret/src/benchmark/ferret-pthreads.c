@@ -37,6 +37,20 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <hooks.h>
 #endif
 
+#define HB_ENERGY_IMPL
+#include <heartbeats/hb-energy.h>
+#include <heartbeats/heartbeat-accuracy-power.h>
+#include <poet/poet.h>
+#include <poet/poet_config.h>
+
+#define PREFIX "FERRET"
+#define USE_POET // Power and performance control
+
+heartbeat_t* heart;
+poet_state* state;
+static poet_control_state_t* control_states;
+static poet_cpu_state_t* cpu_states;
+
 #define DEFAULT_DEPTH	25
 #define MAXR	100
 #define IMAGE_DIM	14
@@ -112,6 +126,71 @@ struct rank_data
 
 struct queue q_rank_out;
 
+static inline void hb_poet_init() {
+    float min_heartrate;
+    float max_heartrate;
+    int window_size;
+    double power_target;
+    unsigned int nstates;
+
+    if(getenv(PREFIX"_MIN_HEART_RATE") == NULL) {
+      min_heartrate = 0.0;
+    } else {
+      min_heartrate = atof(getenv(PREFIX"_MIN_HEART_RATE"));
+    }
+    if(getenv(PREFIX"_MAX_HEART_RATE") == NULL) {
+      max_heartrate = 100.0;
+    } else {
+      max_heartrate = atof(getenv(PREFIX"_MAX_HEART_RATE"));
+    }
+    if(getenv(PREFIX"_WINDOW_SIZE") == NULL) {
+      window_size = 30;
+    } else {
+      window_size = atoi(getenv(PREFIX"_WINDOW_SIZE"));
+    }
+    if(getenv(PREFIX"_POWER_TARGET") == NULL) {
+      power_target = 70;
+    } else {
+      power_target = atof(getenv(PREFIX"_POWER_TARGET"));
+    }
+
+    printf("init heartbeat with %f %f %d\n", min_heartrate, max_heartrate, window_size);
+    heart = heartbeat_acc_pow_init(window_size, 100, "heartbeat.log",
+                                   min_heartrate, max_heartrate,
+                                   0, 100,
+                                   1, hb_energy_impl_alloc(), power_target, power_target);
+    if (heart == NULL) {
+      fprintf(stderr, "Failed to init heartbeat.\n");
+      exit(1);
+    }
+#ifdef USE_POET
+    if (get_control_states(NULL, &control_states, &nstates)) {
+      fprintf(stderr, "Failed to load control states.\n");
+      exit(1);
+    }
+    if (get_cpu_states(NULL, &cpu_states, &nstates)) {
+      fprintf(stderr, "Failed to load cpu states.\n");
+      exit(1);
+    }
+    state = poet_init(heart, nstates, control_states, cpu_states, &apply_cpu_config, &get_current_cpu_state, 1, "poet.log");
+    if (state == NULL) {
+      fprintf(stderr, "Failed to init poet.\n");
+      exit(1);
+    }
+#endif
+   printf("heartbeat init'd\n");
+
+}
+
+static inline void hb_poet_finish() {
+#ifdef USE_POET
+    poet_destroy(state);
+    free(control_states);
+    free(cpu_states);
+#endif
+    heartbeat_finish(heart);
+    printf("heartbeat finished\n");
+}
 
 /* ------- The Helper Functions ------- */
 int cnt_enqueue;
@@ -375,6 +454,7 @@ void *t_rank (void *dummy)
 void *t_out (void *dummy)
 {
 	struct rank_data *rank;
+	int count;
 	while (1)
 	{
 		if(dequeue(&q_rank_out, &rank) < 0)
@@ -398,6 +478,14 @@ void *t_out (void *dummy)
 		cass_result_free(&rank->result);
 		free(rank->name);
 		free(rank);
+
+		if(count % 10 == 0) {
+			heartbeat_acc(heart, cnt_dequeue,1);
+#ifdef USE_POET
+			poet_apply_control(state);
+#endif
+		}
+		count++;
 
 		cnt_dequeue++;
 		
@@ -427,6 +515,8 @@ int main (int argc, char *argv[])
 	tpool_t *p_out;
 
 	int ret, i;
+
+	hb_poet_init();
 
 #ifdef PARSEC_VERSION
 #define __PARSEC_STRING(x) #x
@@ -595,6 +685,8 @@ int main (int argc, char *argv[])
 	image_cleanup();
 
 	fclose(fout);
+
+	hb_poet_finish();
 
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_bench_end();
