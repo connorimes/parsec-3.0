@@ -271,7 +271,7 @@ bool ParticleFilter<T>::Update(fpType timeval)								//weights have already bee
 		}
 		mParticles = mNewParticles;											//save new particle set
 	}
-	he_profiler_event_end(PARTICLE_FILTER_UPDATE, PARTICLE_FILTER_UPDATE, 1, &event);
+	he_profiler_event_end(&event, PARTICLE_FILTER_UPDATE, PARTICLE_FILTER_UPDATE, 1);
 	return true;
 }
 
@@ -285,7 +285,7 @@ void ParticleFilter<T>::Estimate(Vectorf &estimate)
 	for(uint i = 0; i < mParticles.size(); i++)								//calculate expected value 
 		for(uint j = 0; j < estimate.size(); j++)
 			estimate[j] += mParticles[i][j] * mWeights[i];
-	he_profiler_event_end(PARTICLE_FILTER_ESTIMATE, PARTICLE_FILTER_ESTIMATE, 1, &event);
+	he_profiler_event_end(&event, PARTICLE_FILTER_ESTIMATE, PARTICLE_FILTER_ESTIMATE, 1);
 }
 
 #endif

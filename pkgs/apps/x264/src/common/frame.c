@@ -214,7 +214,7 @@ int x264_frame_copy_picture( x264_t *h, x264_frame_t *dst, x264_picture_t *src )
         h->mc.plane_copy( dst->plane[i], dst->i_stride[i], plane, stride, width, height );
     }
 
-    he_profiler_event_end(FRAME_COPY_PICTURE, FRAME_COPY_PICTURE, 1, &event);
+    he_profiler_event_end(&event, FRAME_COPY_PICTURE, FRAME_COPY_PICTURE, 1);
 
     return 0;
 }
@@ -982,5 +982,5 @@ void x264_frame_sort( x264_frame_t **list, int b_dts )
         }
     } while( !b_ok );
 
-    he_profiler_event_end(FRAME_SORT, FRAME_SORT, 1, &event);
+    he_profiler_event_end(&event, FRAME_SORT, FRAME_SORT, 1);
 }

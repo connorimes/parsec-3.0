@@ -370,7 +370,7 @@ void x264_sps_write( bs_t *s, x264_sps_t *sps )
 
     bs_rbsp_trailing( s );
 
-    he_profiler_event_end(SPS_WRITE, SPS_WRITE, 1, &event);
+    he_profiler_event_end(&event, SPS_WRITE, SPS_WRITE, 1);
 }
 
 void x264_pps_init( x264_pps_t *pps, int i_id, x264_param_t *param, x264_sps_t *sps )
@@ -481,7 +481,7 @@ void x264_pps_write( bs_t *s, x264_pps_t *pps )
 
     bs_rbsp_trailing( s );
 
-    he_profiler_event_end(PPS_WRITE, PPS_WRITE, 1, &event);
+    he_profiler_event_end(&event, PPS_WRITE, PPS_WRITE, 1);
 }
 
 void x264_sei_version_write( x264_t *h, bs_t *s )

@@ -93,7 +93,7 @@ inline void WritePose(ostream &f, vector<float> &pose)
 	for(int i = 0; i < (int)pose.size(); i++)
 		f << pose[i] << " ";
 	f << endl;
-	he_profiler_event_end(WRITE_POSE, WRITE_POSE, 1, &event);
+	he_profiler_event_end(&event, WRITE_POSE, WRITE_POSE, 1);
 }
 
 bool ProcessCmdLine(int argc, char **argv, string &path, int &cameras, int &frames, int &particles, int &layers, int &threads, int &threadModel, bool &OutputBMP)
@@ -384,7 +384,7 @@ int main(int argc, char **argv)
 	bool OutputBMP;
 	int cameras, frames, particles, layers, threads, threadModel;								//process command line parameters to get path, cameras, and frames
 
-	if (he_profiler_init(NUM_PROFILERS, APPLICATION, PROFILER_NAME, 20, "BODYTRACK_", NULL)) {
+	if (he_profiler_init(NUM_PROFILERS, PROFILER_NAME, NULL, 20, APPLICATION, 0, NULL)) {
 		exit(1);
 	}
 	printf("Profiling initialized\n");

@@ -104,7 +104,7 @@ int main( int argc, char **argv )
     cli_opt_t opt;
     int ret;
 
-    if (he_profiler_init(NUM_PROFILERS, APPLICATION, PROFILER_NAME, 20, "X264_", NULL)) {
+    if (he_profiler_init(NUM_PROFILERS, PROFILER_NAME, NULL, 20, APPLICATION, 0, NULL)) {
         exit(1);
     }
     printf("Profiling initialized\n");
@@ -823,7 +823,7 @@ static int  Encode_frame( x264_t *h, hnd_t hout, x264_picture_t *pic )
     if (i_nal)
         p_set_eop( hout, &pic_out );
 
-    he_profiler_event_end(ENCODE_FRAME, ENCODE_FRAME, 1, &event);
+    he_profiler_event_end(&event, ENCODE_FRAME, ENCODE_FRAME, 1);
 
     return i_file;
 }
@@ -919,7 +919,7 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
             fflush( stderr ); // needed in windows
         }
 
-        he_profiler_event_end(FRAME, FRAME, 1, &event);
+        he_profiler_event_end(&event, FRAME, FRAME, 1);
     }
     /* Flush delayed B-frames */
     do {

@@ -978,7 +978,7 @@ static inline void x264_reference_build_list( x264_t *h, int i_poc )
     h->mb.pic.i_fref[0] = h->i_ref0;
     h->mb.pic.i_fref[1] = h->i_ref1;
 
-    he_profiler_event_end(REFERENCE_BUILD_LIST, REFERENCE_BUILD_LIST, 1, &event);
+    he_profiler_event_end(&event, REFERENCE_BUILD_LIST, REFERENCE_BUILD_LIST, 1);
 }
 
 static void x264_fdec_filter_row( x264_t *h, int mb_y )
@@ -1842,7 +1842,7 @@ static void x264_encoder_frame_end( x264_t *h, x264_t *thread_current,
     // for the use of the next frame
     x264_thread_sync_stat( thread_current, h );
 
-    he_profiler_event_end(ENCODER_FRAME_END, ENCODER_FRAME_END, 1, &event);
+    he_profiler_event_end(&event, ENCODER_FRAME_END, ENCODER_FRAME_END, 1);
 
 #ifdef DEBUG_MB_TYPE
 {
