@@ -57,6 +57,10 @@
 #include <hooks.h>
 #endif //ENABLE_PARSEC_HOOKS
 
+#include <heartbeats/heartbeat-accuracy-power.h>
+#include <poet/poet.h>
+extern heartbeat_t* heart;
+extern poet_state* s_state;
 
 #define INITIAL_SEARCH_TREE_SIZE 4096
 
@@ -394,6 +398,8 @@ void sub_Compress(chunk_t *chunk) {
  *  - Enqueue each item into send queue
  */
 #ifdef ENABLE_PTHREADS
+int counter = 0;
+
 void *Compress(void * targs) {
   struct thread_args *args = (struct thread_args *)targs;
   const int qid = args->tid / MAX_THREADS_PER_QUEUE;
@@ -435,6 +441,11 @@ void *Compress(void * targs) {
 
     //put the item in the next queue for the write thread
     if (ringbuffer_isFull(&send_buf)) {
+      int old_counter = __sync_fetch_and_add(&counter, 1);
+      heartbeat_acc(heart, old_counter, 1);
+#ifdef USE_POET
+      poet_apply_control(s_state);
+#endif
       r = queue_enqueue(&reorder_que[qid], &send_buf, ITEM_PER_INSERT);
       assert(r>=1);
     }

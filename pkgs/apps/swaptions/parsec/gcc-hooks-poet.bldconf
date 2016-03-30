@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# gcc-hooks-poet.bldconf - configuration file for PARSEC
+
+source ${PARSECDIR}/pkgs/apps/swaptions/parsec/gcc-hooks.bldconf

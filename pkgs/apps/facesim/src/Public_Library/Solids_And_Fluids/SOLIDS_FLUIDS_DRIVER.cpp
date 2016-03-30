@@ -9,6 +9,14 @@
 #ifdef ENABLE_PARSEC_HOOKS
 #include <hooks.h>
 #endif
+
+#include <heartbeats/heartbeat-accuracy-power.h>
+#include <poet/poet.h>
+extern heartbeat_t* heart;
+extern poet_state* s_state;
+extern int perf_pwr_switch;
+#define USE_POET
+
 using namespace PhysBAM;
 //#####################################################################
 // Function Execute_Main_Program
@@ -58,6 +66,13 @@ Simulate_To_Frame (const int frame_input)
 	while (current_frame < frame_input)
 	{
 		LOG::Push_Scope ("FRAME", "Frame %d", current_frame + 1);
+		heartbeat_acc(heart, current_frame, 1);
+#ifdef USE_POET
+                if (current_frame == perf_pwr_switch) {
+                    poet_set_constraint_type(s_state, POWER);
+                }
+		poet_apply_control(s_state);
+#endif
 		Preprocess_Frame (current_frame + 1);
 		Advance_To_Target_Time (Time_At_Frame (current_frame + 1));
 		Postprocess_Frame (++current_frame);

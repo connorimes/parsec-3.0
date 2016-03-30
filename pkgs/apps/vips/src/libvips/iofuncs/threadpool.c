@@ -69,6 +69,9 @@
 #include <dmalloc.h>
 #endif /*WITH_DMALLOC*/
 
+#include <heartbeats/heartbeat-accuracy-power.h>
+#include <poet/poet.h>
+
 /**
  * SECTION: threadpool
  * @short_description: pools of worker threads 
@@ -101,6 +104,9 @@ int im__thinstrip_height = IM__THINSTRIP_HEIGHT;
 /* Default n threads ... 0 means get from environment.
  */
 int im__concurrency = 0;
+
+heartbeat_t* heart;
+poet_state* s_state;
 
 #ifndef HAVE_THREADS
 /* If we're building without gthread, we need stubs for the g_thread_*() and
@@ -527,6 +533,7 @@ vips_thread_work_unit( VipsThread *thr )
 }
 
 #ifdef HAVE_THREADS
+static int worker_counter = 0;
 /* What runs as a thread ... loop, waiting to be told to do stuff.
  */
 static void *
@@ -544,6 +551,13 @@ vips_thread_main_loop( void *a )
 		vips_thread_work_unit( thr );
 		im_semaphore_up( &pool->tick );
 
+		if(worker_counter % 200 == 0) {
+			heartbeat_acc(heart, worker_counter, 1);
+#ifdef USE_POET
+			poet_apply_control(s_state);
+#endif
+		}
+		worker_counter++;
 		if( pool->stop || pool->error )
 			break;
 	} 

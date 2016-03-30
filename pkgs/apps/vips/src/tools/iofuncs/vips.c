@@ -73,11 +73,26 @@
 #include <vips/intl.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <locale.h>
 
 #include <vips/vips.h>
+
+#define HB_ENERGY_IMPL
+#include <heartbeats/hb-energy.h>
+#include <heartbeats/heartbeat-accuracy-power.h>
+#include <poet/poet.h>
+#include <poet/poet_config.h>
+
+#define PREFIX "VIPS"
+#define USE_POET // Power and performance control
+
+heartbeat_t* heart;
+poet_state* s_state;
+static poet_control_state_t* s_control_states;
+static poet_cpu_state_t* s_cpu_states;
 
 #ifdef OS_WIN32
 #define strcasecmp(a,b) _stricmp(a,b)
@@ -90,6 +105,72 @@ static gboolean main_option_links;
 static char *main_option_cpph = NULL;
 static char *main_option_cppc = NULL;
 static gboolean *main_option_version;
+
+static inline void hb_poet_init() {
+    float min_heartrate;
+    float max_heartrate;
+    int window_size;
+    double power_target;
+    unsigned int s_nstates;
+
+    if(getenv(PREFIX"_MIN_HEART_RATE") == NULL) {
+      min_heartrate = 0.0;
+    } else {
+      min_heartrate = atof(getenv(PREFIX"_MIN_HEART_RATE"));
+    }
+    if(getenv(PREFIX"_MAX_HEART_RATE") == NULL) {
+      max_heartrate = 100.0;
+    } else {
+      max_heartrate = atof(getenv(PREFIX"_MAX_HEART_RATE"));
+    }
+    if(getenv(PREFIX"_WINDOW_SIZE") == NULL) {
+      window_size = 30;
+    } else {
+      window_size = atoi(getenv(PREFIX"_WINDOW_SIZE"));
+    }
+    if(getenv(PREFIX"_POWER_TARGET") == NULL) {
+      power_target = 70;
+    } else {
+      power_target = atof(getenv(PREFIX"_POWER_TARGET"));
+    }
+
+    printf("init heartbeat with %f %f %d\n", min_heartrate, max_heartrate, window_size);
+    heart = heartbeat_acc_pow_init(window_size, 100, "heartbeat.log",
+                                   min_heartrate, max_heartrate,
+                                   0, 100,
+                                   1, hb_energy_impl_alloc(), power_target, power_target);
+    if (heart == NULL) {
+      fprintf(stderr, "Failed to init heartbeat.\n");
+      exit(1);
+    }
+#ifdef USE_POET
+    if (get_control_states(NULL, &s_control_states, &s_nstates)) {
+      fprintf(stderr, "Failed to load control states.\n");
+      exit(1);
+    }
+    if (get_cpu_states(NULL, &s_cpu_states, &s_nstates)) {
+      fprintf(stderr, "Failed to load cpu states.\n");
+      exit(1);
+    }
+    s_state = poet_init(heart, s_nstates, s_control_states, s_cpu_states, &apply_cpu_config, &get_current_cpu_state, 1, "poet.log");
+    if (s_state == NULL) {
+      fprintf(stderr, "Failed to init poet.\n");
+      exit(1);
+    }
+#endif
+   printf("heartbeat init'd\n");
+
+}
+
+static inline void hb_poet_finish() {
+#ifdef USE_POET
+    poet_destroy(s_state);
+    free(s_control_states);
+    free(s_cpu_states);
+#endif
+    heartbeat_finish(heart);
+    printf("heartbeat finished\n");
+}
 
 static GOptionEntry main_option[] = {
 	{ "list", 'l', 0, G_OPTION_ARG_STRING, &main_option_list, 
@@ -969,6 +1050,8 @@ main( int argc, char **argv )
 			argc -= 1;
 		}
 
+	hb_poet_init();
+
 	/* Should we try to run the thing we are named as?
 	 */
 	if( !im_isprefix( "vips", g_get_prgname() ) ) {
@@ -1020,5 +1103,6 @@ main( int argc, char **argv )
 
 	im_close_plugins();
 
+	hb_poet_finish();
 	return( 0 );
 }

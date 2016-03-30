@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# gcc-hooks-poet.bldconf - configuration file for PARSEC
+
+source ${PARSECDIR}/config/gcc-hooks.bldconf
+
+# Link with heartbeats and poet libraries
+CFLAGS="${CFLAGS} -O2"
+CXXFLAGS="${CXXFLAGS} -O2"
+LDFLAGS="${LDFLAGS}"
+LIBS="${LIBS} -lpoet -lhb-acc-pow-shared -lhb-energy-msr -lrt -lstdc++"
+# LIBS="${LIBS} -lpoet -lhb-acc-pow-shared -lhb-energy-odroid -lrt -lstdc++"
+# LIBS="${LIBS} -lpoet -lhb-acc-pow-shared -lhb-energy-wattsup -lwattsup -lrt -lstdc++"

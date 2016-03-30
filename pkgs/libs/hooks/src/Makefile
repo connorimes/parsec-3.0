@@ -10,6 +10,6 @@
 # distribution. You also need to make sure that the shared library can be
 # found at run time. The PARSEC framework already takes care of this.
 
-#include Makefile.static
-include Makefile.shared
+include Makefile.static
+#include Makefile.shared
 
