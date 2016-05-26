@@ -1,3 +1,0 @@
-#!/bin/bash
-
-source ${PARSECDIR}/pkgs/libs/libjpeg/parsec/gcc-hooks.bldconf

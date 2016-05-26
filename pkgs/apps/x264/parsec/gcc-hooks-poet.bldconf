@@ -1,3 +1,0 @@
-#!/bin/bash
-
-source ${PARSECDIR}/pkgs/apps/x264/parsec/gcc-hooks.bldconf

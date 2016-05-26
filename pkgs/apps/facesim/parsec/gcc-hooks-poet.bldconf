@@ -1,3 +1,0 @@
-#!/bin/bash
-
-source ${PARSECDIR}/pkgs/apps/facesim/parsec/gcc-hooks.bldconf

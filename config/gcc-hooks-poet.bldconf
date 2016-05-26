@@ -1,8 +1,0 @@
-#!/bin/bash
-
-source ${PARSECDIR}/config/gcc-hooks.bldconf
-
-CFLAGS="${CFLAGS} -O2"
-CXXFLAGS="${CXXFLAGS} -O2"
-LDFLAGS="${LDFLAGS}"
-LIBS="${LIBS} -lpoet -lhb-acc-pow-shared -lhb-energy-msr -lrt -lstdc++"
