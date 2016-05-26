@@ -11,10 +11,10 @@
 #endif
 
 #include <heartbeats/heartbeat-accuracy-power.h>
-#include <poet/poet.h>
+#include <copper.h>
 extern heartbeat_t* heart;
-extern poet_state* state;
-#define USE_POET // Power and performance control
+extern copper* cop;
+extern int apply_powercap(double powercap);
 
 using namespace PhysBAM;
 //#####################################################################
@@ -66,9 +66,14 @@ Simulate_To_Frame (const int frame_input)
 	{
 		LOG::Push_Scope ("FRAME", "Frame %d", current_frame + 1);
 		heartbeat_acc(heart, current_frame, 1);
-#ifdef USE_POET
-		poet_apply_control(state);
-#endif
+		if (current_frame != 0 && current_frame % hb_get_window_size(heart) == 0) {
+            double powercap = copper_adapt(cop, current_frame, hb_get_windowed_rate(heart));
+            if (powercap <= 0) {
+                perror("copper_adapt");
+            } else {
+                apply_powercap(powercap);
+            }
+        }
 		Preprocess_Frame (current_frame + 1);
 		Advance_To_Target_Time (Time_At_Frame (current_frame + 1));
 		Postprocess_Frame (++current_frame);
