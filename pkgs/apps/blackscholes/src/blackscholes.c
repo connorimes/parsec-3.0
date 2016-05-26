@@ -91,23 +91,19 @@ int numError = 0;
 int nThreads;
 
 static int apply_powercap(double powercap) {
+  raplcap_limit rl;
+  uint32_t i;
   uint32_t n = raplcap_get_num_sockets(&rc);
   if (n == 0) {
     perror("raplcap_get_num_sockets");
     return -1;
   }
   printf("Requested power cap %f for %"PRIu32" sockets\n", powercap, n);
-  uint32_t i;
-  raplcap_limit rl;
+  // share powercap evenly across sockets
+  // time window of zero keeps current time window
+  rl.seconds = 0.0;
+  rl.watts = powercap / (double) n;
   for (i = 0; i < n; i++) {
-    // getting this just for the timing part which has to be written back
-    if (raplcap_get_limits_package(i, &rc, NULL, &rl)) {
-      perror("raplcap_get_limits_package");
-      return -1;
-    }
-    printf("Old RAPL config for socket %"PRIu32": time=%f power=%f\n", i, rl.seconds, rl.watts);
-    // share powercap evenly across sockets
-    rl.watts = powercap / (double) n;
     printf("New RAPL config for socket %"PRIu32": time=%f power=%f\n", i, rl.seconds, rl.watts);
     if (raplcap_set_limits_package(i, &rc, NULL, &rl)) {
       perror("raplcap_set_limits_package");
@@ -121,7 +117,7 @@ static inline void hb_copper_init() {
   double min_heartrate = 0.0;
   double max_heartrate = 100.0;
   int window_size = 20;
-  double min_power = 0.0;
+  double min_power = 0.1;
   double max_power = 100.0;
   const char* model = NULL;
 
