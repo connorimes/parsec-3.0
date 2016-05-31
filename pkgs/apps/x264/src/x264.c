@@ -113,8 +113,8 @@ static int apply_powercap(double powercap) {
   rl.watts = powercap / (double) n;
   for (i = 0; i < n; i++) {
     printf("New RAPL config for socket %"PRIu32": time=%f power=%f\n", i, rl.seconds, rl.watts);
-    if (raplcap_set_limits_package(i, &rc, NULL, &rl)) {
-      perror("raplcap_set_limits_package");
+    if (raplcap_set_limits(i, &rc, RAPLCAP_ZONE_PACKAGE, NULL, &rl)) {
+      perror("raplcap_set_limits");
       return -1;
     }
   }

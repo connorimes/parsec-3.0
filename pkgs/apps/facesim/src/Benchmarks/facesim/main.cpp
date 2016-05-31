@@ -37,7 +37,7 @@ bool PHYSBAM_THREADED_RUN = true;
 bool PHYSBAM_THREADED_RUN = false;
 #endif //ENABLE_PTHREADS
 
-static int apply_powercap(double powercap) {
+int apply_powercap(double powercap) {
   raplcap_limit rl;
   uint32_t i;
   uint32_t n = raplcap_get_num_sockets(&rc);
@@ -52,8 +52,8 @@ static int apply_powercap(double powercap) {
   rl.watts = powercap / (double) n;
   for (i = 0; i < n; i++) {
     printf("New RAPL config for socket %"PRIu32": time=%f power=%f\n", i, rl.seconds, rl.watts);
-    if (raplcap_set_limits_package(i, &rc, NULL, &rl)) {
-      perror("raplcap_set_limits_package");
+    if (raplcap_set_limits(i, &rc, RAPLCAP_ZONE_PACKAGE, NULL, &rl)) {
+      perror("raplcap_set_limits");
       return -1;
     }
   }
