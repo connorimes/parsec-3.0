@@ -38,6 +38,9 @@ bool PHYSBAM_THREADED_RUN = false;
 #endif //ENABLE_PTHREADS
 
 int apply_powercap(double powercap) {
+  if (getenv("POWERCAP_DISABLE") != NULL) {
+    return 0;
+  }
   raplcap_limit rl;
   uint32_t i;
   uint32_t n = raplcap_get_num_sockets(&rc);
