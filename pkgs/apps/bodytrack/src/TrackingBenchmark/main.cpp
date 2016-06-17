@@ -65,16 +65,15 @@ using namespace tbb;
 #include "TrackingModel.h"
 #include "system.h"
 
-#define HB_ENERGY_IMPL
-#include <heartbeats/hb-energy.h>
-#include <heartbeats/heartbeat-accuracy-power.h>
+#include <heartbeats-simple-classic.h>
 #include <raplcap.h>
 #include <copper.h>
+#include <copper-util.h>
 #include <copper-util.h>
 
 #define PREFIX "BODYTRACK"
 
-heartbeat_t* heart;
+hbsc_acc_pow_ctx heart;
 raplcap rc;
 copper* cop;
 
@@ -107,18 +106,14 @@ static int apply_powercap(double powercap) {
 }
 
 static inline void hb_copper_init() {
-  double min_heartrate = 0.0;
-  double max_heartrate = 100.0;
+  double heartrate = 100.0;
   int window_size = 20;
   double min_power = 0.1;
   double max_power = 100.0;
   const char* model = NULL;
 
-  if (getenv(PREFIX"_MIN_HEART_RATE") != NULL) {
-    min_heartrate = atof(getenv(PREFIX"_MIN_HEART_RATE"));
-  }
-  if (getenv(PREFIX"_MAX_HEART_RATE") != NULL) {
-    max_heartrate = atof(getenv(PREFIX"_MAX_HEART_RATE"));
+  if (getenv(PREFIX"_HEART_RATE") != NULL) {
+    heartrate = atof(getenv(PREFIX"_HEART_RATE"));
   }
   if (getenv(PREFIX"_WINDOW_SIZE") != NULL) {
     window_size = atoi(getenv(PREFIX"_WINDOW_SIZE"));
@@ -131,13 +126,8 @@ static inline void hb_copper_init() {
   }
   model = getenv(PREFIX"_MODEL");
 
-  printf("init heartbeat with %f %f %f %f %d\n", min_heartrate, max_heartrate, min_power, max_power, window_size);
-  heart = heartbeat_acc_pow_init(window_size, 100, "heartbeat.log",
-                                 min_heartrate, max_heartrate,
-                                 0, 100,
-                                 1, hb_energy_impl_alloc(), min_power, max_power);
-  if (heart == NULL) {
-    fprintf(stderr, "Failed to init heartbeat.\n");
+  if (hbsc_acc_pow_init(&heart, window_size, "heartbeat.log")) {
+    perror("Failed to init heartbeat");
     exit(1);
   }
   printf("heartbeat init'd\n");
@@ -151,7 +141,7 @@ static inline void hb_copper_init() {
     exit(1);
   }
   printf("raplcap init'd\n");
-  cop = copper_alloc_init((min_heartrate + max_heartrate) / 2.0, min_power, max_power, max_power, 1, "copper.log", model);
+  cop = copper_alloc_init(heartrate, min_power, max_power, max_power, 1, "copper.log", model);
   if (cop == NULL) {
     perror("copper_alloc_init");
     exit(1);
@@ -164,7 +154,7 @@ static inline void hb_copper_finish() {
   printf("copper destroyed\n");
   raplcap_destroy(&rc);
   printf("raplcap destroyed\n");
-  heartbeat_finish(heart);
+  hbsc_acc_pow_finish(&heart);
   printf("heartbeat finished\n");
 }
 
@@ -353,9 +343,9 @@ int mainPthreads(string path, int cameras, int frames, int particles, int layers
 #endif
 	for(int i = 0; i < frames; i++)														//process each set of frames
 	{
-		heartbeat_acc(heart, i, 1.0);
-                if (i != 0 && i % hb_get_window_size(heart) == 0) {
-                    double powercap = copper_adapt(cop, i, hb_get_windowed_rate(heart));
+		hbsc_acc_pow(&heart, i, 1, 0);
+                if (i != 0 && i % hb_acc_pow_get_window_size(hbsc_acc_pow_get_hb(&heart)) == 0) {
+                    double powercap = copper_adapt(cop, i, hb_acc_pow_get_window_perf(hbsc_acc_pow_get_hb(&heart)));
                     if (powercap <= 0) {
                         perror("copper_adapt");
                     } else {

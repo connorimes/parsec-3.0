@@ -10,9 +10,9 @@
 #include <hooks.h>
 #endif
 
-#include <heartbeats/heartbeat-accuracy-power.h>
+#include <heartbeats-simple-classic.h>
 #include <copper.h>
-extern heartbeat_t* heart;
+extern hbsc_acc_pow_ctx heart;
 extern copper* cop;
 extern int apply_powercap(double powercap);
 
@@ -65,9 +65,9 @@ Simulate_To_Frame (const int frame_input)
 	while (current_frame < frame_input)
 	{
 		LOG::Push_Scope ("FRAME", "Frame %d", current_frame + 1);
-		heartbeat_acc(heart, current_frame, 1);
-		if (current_frame != 0 && current_frame % hb_get_window_size(heart) == 0) {
-            double powercap = copper_adapt(cop, current_frame, hb_get_windowed_rate(heart));
+		hbsc_acc_pow(&heart, current_frame, 1, 0);
+		if (current_frame != 0 && current_frame % hb_acc_pow_get_window_size(hbsc_acc_pow_get_hb(&heart)) == 0) {
+            double powercap = copper_adapt(cop, current_frame, hb_acc_pow_get_window_perf(hbsc_acc_pow_get_hb(&heart)));
             if (powercap <= 0) {
                 perror("copper_adapt");
             } else {
