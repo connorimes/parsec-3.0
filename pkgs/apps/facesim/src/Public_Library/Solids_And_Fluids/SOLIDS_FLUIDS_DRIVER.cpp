@@ -10,11 +10,7 @@
 #include <hooks.h>
 #endif
 
-#include <heartbeats-simple-classic.h>
-#include <copper.h>
-extern hbsc_acc_pow_ctx heart;
-extern copper* cop;
-extern int apply_powercap(double powercap);
+#include <copper-eval.h>
 
 using namespace PhysBAM;
 //#####################################################################
@@ -65,15 +61,7 @@ Simulate_To_Frame (const int frame_input)
 	while (current_frame < frame_input)
 	{
 		LOG::Push_Scope ("FRAME", "Frame %d", current_frame + 1);
-		hbsc_acc_pow(&heart, current_frame, 1, 0);
-		if (current_frame != 0 && current_frame % hb_acc_pow_get_window_size(hbsc_acc_pow_get_hb(&heart)) == 0) {
-            double powercap = copper_adapt(cop, current_frame, hb_acc_pow_get_window_perf(hbsc_acc_pow_get_hb(&heart)));
-            if (powercap <= 0) {
-                perror("copper_adapt");
-            } else {
-                apply_powercap(powercap);
-            }
-        }
+		copper_eval_iteration(current_frame, 1, 0);
 		Preprocess_Frame (current_frame + 1);
 		Advance_To_Target_Time (Time_At_Frame (current_frame + 1));
 		Postprocess_Frame (++current_frame);

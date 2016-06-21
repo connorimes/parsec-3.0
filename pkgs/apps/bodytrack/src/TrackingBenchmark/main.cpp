@@ -65,98 +65,9 @@ using namespace tbb;
 #include "TrackingModel.h"
 #include "system.h"
 
-#include <heartbeats-simple-classic.h>
-#include <raplcap.h>
-#include <copper.h>
-#include <copper-util.h>
-#include <copper-util.h>
-
-#define PREFIX "BODYTRACK"
-
-hbsc_acc_pow_ctx heart;
-raplcap rc;
-copper* cop;
+#include <copper-eval.h>
 
 using namespace std;
-
-static int apply_powercap(double powercap) {
-  if (getenv("POWERCAP_DISABLE") != NULL) {
-    return 0;
-  }
-  raplcap_limit rl;
-  uint32_t i;
-  uint32_t n = raplcap_get_num_sockets(&rc);
-  if (n == 0) {
-    perror("raplcap_get_num_sockets");
-    return -1;
-  }
-  printf("Requested power cap %f for %"PRIu32" sockets\n", powercap, n);
-  // share powercap evenly across sockets
-  // time window of zero keeps current time window
-  rl.seconds = 0.0;
-  rl.watts = powercap / (double) n;
-  for (i = 0; i < n; i++) {
-    printf("New RAPL config for socket %"PRIu32": time=%f power=%f\n", i, rl.seconds, rl.watts);
-    if (raplcap_set_limits(i, &rc, RAPLCAP_ZONE_PACKAGE, NULL, &rl)) {
-      perror("raplcap_set_limits");
-      return -1;
-    }
-  }
-  return 0;
-}
-
-static inline void hb_copper_init() {
-  double heartrate = 100.0;
-  int window_size = 20;
-  double min_power = 0.1;
-  double max_power = 100.0;
-  const char* model = NULL;
-
-  if (getenv(PREFIX"_HEART_RATE") != NULL) {
-    heartrate = atof(getenv(PREFIX"_HEART_RATE"));
-  }
-  if (getenv(PREFIX"_WINDOW_SIZE") != NULL) {
-    window_size = atoi(getenv(PREFIX"_WINDOW_SIZE"));
-  }
-  if (getenv(PREFIX"_MIN_POWER") != NULL) {
-    min_power = atof(getenv(PREFIX"_MIN_POWER"));
-  }
-  if (getenv(PREFIX"_MAX_POWER") != NULL) {
-    max_power = atof(getenv(PREFIX"_MAX_POWER"));
-  }
-  model = getenv(PREFIX"_MODEL");
-
-  if (hbsc_acc_pow_init(&heart, window_size, "heartbeat.log")) {
-    perror("Failed to init heartbeat");
-    exit(1);
-  }
-  printf("heartbeat init'd\n");
-  if (raplcap_init(&rc)) {
-    perror("raplcap_init");
-    exit(1);
-  }
-  // start at max power
-  if (apply_powercap(max_power)) {
-    perror("apply_powercap");
-    exit(1);
-  }
-  printf("raplcap init'd\n");
-  cop = copper_alloc_init(heartrate, min_power, max_power, max_power, 1, "copper.log", model);
-  if (cop == NULL) {
-    perror("copper_alloc_init");
-    exit(1);
-  }
-  printf("copper init'd\n");
-}
-
-static inline void hb_copper_finish() {
-  copper_destroy_free(cop);
-  printf("copper destroyed\n");
-  raplcap_destroy(&rc);
-  printf("raplcap destroyed\n");
-  hbsc_acc_pow_finish(&heart);
-  printf("heartbeat finished\n");
-}
 
 //templated conversion from string
 template<class T>
@@ -343,15 +254,7 @@ int mainPthreads(string path, int cameras, int frames, int particles, int layers
 #endif
 	for(int i = 0; i < frames; i++)														//process each set of frames
 	{
-		hbsc_acc_pow(&heart, i, 1, 0);
-                if (i != 0 && i % hb_acc_pow_get_window_size(hbsc_acc_pow_get_hb(&heart)) == 0) {
-                    double powercap = copper_adapt(cop, i, hb_acc_pow_get_window_perf(hbsc_acc_pow_get_hb(&heart)));
-                    if (powercap <= 0) {
-                        perror("copper_adapt");
-                    } else {
-                        apply_powercap(powercap);
-                    }
-                }
+		copper_eval_iteration(i, 1, 0);
 		cout << "Processing frame " << i << endl;
 		if(!pf.Update((float)i))														//Run particle filter step
 		{	cout << "Error loading observation data" << endl;
@@ -473,7 +376,10 @@ int main(int argc, char **argv)
 	bool OutputBMP;
 	int cameras, frames, particles, layers, threads, threadModel;								//process command line parameters to get path, cameras, and frames
 
-	hb_copper_init();
+	if (copper_eval_init()) {
+		perror("copper_eval_init");
+		exit(1);
+	}
 
 #ifdef PARSEC_VERSION
 #define __PARSEC_STRING(x) #x
@@ -553,7 +459,9 @@ int main(int argc, char **argv)
 			break;
 	}
 
-	hb_copper_finish();
+	if (copper_eval_finish()) {
+		perror("copper_eval_finish");
+	}
 
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_bench_end();
