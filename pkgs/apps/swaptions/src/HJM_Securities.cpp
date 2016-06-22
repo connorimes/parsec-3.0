@@ -111,7 +111,9 @@ void * worker(void *arg){
      assert(iSuccess == 1);
      swaptions[i].dSimSwaptionMeanPrice = pdSwaptionPrice[0];
      swaptions[i].dSimSwaptionStdError = pdSwaptionPrice[1];
-     copper_eval_iteration(i, 1, swaptions[i].dSimSwaptionStdError);
+     if (i % 10 == 0) {
+      copper_eval_iteration(i, 10, swaptions[i].dSimSwaptionStdError);
+    }
    }
 
    return NULL;

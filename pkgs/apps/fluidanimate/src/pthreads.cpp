@@ -1159,7 +1159,9 @@ void *AdvanceFramesMT(void *args)
 
   for(int i = 0; i < targs->frames; ++i) {
     AdvanceFrameMT(targs->tid);
-    copper_eval_iteration(i, 1, 0);
+    if (i % 100 == 0) {
+      copper_eval_iteration(i, 100, 0);
+    }
   }
   
   return NULL;
@@ -1182,7 +1184,9 @@ void *AdvanceFramesMT(void *args)
     AdvanceFrameMT(targs->tid);
     pthread_barrier_wait(&visualization_barrier);
     //Phase 2: Visualize, worker threads blocked
-    copper_eval_iteration(j, 1, 0);
+    if (j % 100 == 0) {
+      copper_eval_iteration(j, 100, 0);
+    }
     j++;
   }
 

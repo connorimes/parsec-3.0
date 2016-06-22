@@ -549,7 +549,9 @@ vips_thread_main_loop( void *a )
 
 		if( pool->stop || pool->error )
 			break;
-		copper_eval_iteration(j, 1, 0);
+		if (j % 100 == 0) {
+			copper_eval_iteration(j, 100, 0);
+		}
 		j++;
 	} 
 
