@@ -10,6 +10,7 @@
 #include <string>
 #include <stdlib.h>
 #include <stdio.h>
+#include <copper-eval.h>
 
 #ifdef ENABLE_PARSEC_HOOKS
 #include <hooks.h>
@@ -365,6 +366,11 @@ int main(int argc, char* argv[])
 
   parseCommandLine(argc, argv);
 
+  if (copper_eval_init()) {
+    perror("copper_eval_init");
+    exit(1);
+  }
+
   if (glDisplay) {
     /* initialize glut */
     glutInit(&argc, argv);
@@ -485,11 +491,17 @@ int main(int argc, char* argv[])
     int frame = 0;
     do {
       render();
+      copper_eval_iteration(frame, 1, 0);
       frame++;
     } while(!(__builtin_expect(framesToRender > 0,0) && frame >= framesToRender));
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_end();
 #endif
+
+  if (copper_eval_finish()) {
+    perror("copper_eval_finish");
+  }
+
     cout << "Done" << endl << flush;
   }
 

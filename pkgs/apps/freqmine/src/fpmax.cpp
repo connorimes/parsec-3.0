@@ -49,6 +49,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <time.h>
 #include <sys/time.h>
 #include "common.h"
+#include <copper-eval.h>
 
 using namespace std;
 
@@ -88,6 +89,7 @@ memory** fp_tree_buf;
 memory* database_buf;
 int **new_data_num;
 
+
 void printLen()
 {
 	int i, j;
@@ -108,6 +110,10 @@ int main(int argc, char **argv)
 	int i;
 	FP_tree* fptree;
 
+	if (copper_eval_init()) {
+		perror("copper_eval_init");
+		exit(1);
+	}
 #ifdef PARSEC_VERSION
 #define __PARSEC_STRING(x) #x
 #define __PARSEC_XSTRING(x) __PARSEC_STRING(x)
@@ -200,6 +206,9 @@ int main(int argc, char **argv)
 							
 	wtime(&tend);
 	printf ("the data preparation cost %f seconds, the FPgrowth cost %f seconds\n", tdatap - tstart, tend - tdatap);
+	if (copper_eval_finish()) {
+		perror("copper_eval_finish");
+	}
 
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_bench_end();

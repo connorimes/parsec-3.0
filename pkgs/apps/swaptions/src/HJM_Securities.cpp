@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <iostream>
+#include <copper-eval.h>
 
 #include "nr_routines.h"
 #include "HJM.h"
@@ -29,10 +30,10 @@ tbb::cache_aligned_allocator<parm> memory_parm;
 #endif // TBB_VERSION
 #endif //ENABLE_THREADS
 
-
 #ifdef ENABLE_PARSEC_HOOKS
 #include <hooks.h>
 #endif
+
 
 int NUM_TRIALS = DEFAULT_NUM_TRIALS;
 int nThreads = 1;
@@ -110,6 +111,7 @@ void * worker(void *arg){
      assert(iSuccess == 1);
      swaptions[i].dSimSwaptionMeanPrice = pdSwaptionPrice[0];
      swaptions[i].dSimSwaptionStdError = pdSwaptionPrice[1];
+     copper_eval_iteration(i, 1, swaptions[i].dSimSwaptionStdError);
    }
 
    return NULL;
@@ -176,6 +178,11 @@ int main(int argc, char *argv[])
 
         printf("Number of Simulations: %d,  Number of threads: %d Number of swaptions: %d\n", NUM_TRIALS, nThreads, nSwaptions);
         swaption_seed = (long)(2147483647L * RanUnif(&seed));
+
+        if (copper_eval_init()) {
+          perror("copper_eval_init");
+          exit(1);
+        }
 
 #ifdef ENABLE_THREADS
 
@@ -323,6 +330,9 @@ int main(int argc, char *argv[])
 	  free_dmatrix(swaptions[i].ppdFactors, 0, swaptions[i].iFactors-1, 0, swaptions[i].iN-2);
         }
 
+  if (copper_eval_finish()) {
+    perror("copper_eval_finish");
+  }
 
 #ifdef TBB_VERSION
 	memory_parm.deallocate(swaptions, sizeof(parm));

@@ -76,6 +76,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <locale.h>
+#include <copper-eval.h>
 
 #include <vips/vips.h>
 
@@ -896,6 +897,11 @@ print_cppdefs( char *name )
 int
 main( int argc, char **argv )
 {
+	if (copper_eval_init()) {
+		perror("copper_eval_init");
+		exit(1);
+	}
+
 	GOptionContext *context;
 	GError *error = NULL;
 	im_function *fn;
@@ -1019,6 +1025,8 @@ main( int argc, char **argv )
 	}
 
 	im_close_plugins();
-
+	if (copper_eval_finish()) {
+		perror("copper_eval_finish");
+	}
 	return( 0 );
 }

@@ -41,6 +41,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "buffer.h"
 #include "common.h"
 #include "wtime.h"
+#include <copper-eval.h>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -1287,6 +1288,8 @@ void FP_tree::release_node_array_before_mining(int sequence, int thread, int wor
 
 }
 
+int counter = 0;
+
 int FP_tree::FP_growth_first(FSout* fout)
 {
 	int sequence;
@@ -1418,6 +1421,11 @@ int FP_tree::FP_growth_first(FSout* fout)
 				local_fp_tree_buf->freebuf(fptree->MR_tree, fptree->MC_tree, fptree->MB_tree);
 			}else{             
 				fptree->FP_growth(thread, fout);
+
+				int old_counter = __sync_fetch_and_add(&counter, 1);
+				if (old_counter % 4 == 0) {
+					copper_eval_iteration(old_counter, 4, 0);
+				}
 				local_list->top = listlen-1;
 			}
 			release_node_array_after_mining(sequence, thread, workingthread);

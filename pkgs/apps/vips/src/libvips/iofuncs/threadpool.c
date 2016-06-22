@@ -61,6 +61,8 @@
 #include <vips/thread.h>
 #include <vips/debug.h>
 
+#include <copper-eval.h>
+
 #ifdef OS_WIN32
 #include <windows.h>
 #endif /*OS_WIN32*/
@@ -540,12 +542,15 @@ vips_thread_main_loop( void *a )
 	/* Process work units! Always tick, even if we are stopping, so the
 	 * main thread will wake up for exit. 
 	 */
+	int j = 0;
 	for(;;) {
 		vips_thread_work_unit( thr );
 		im_semaphore_up( &pool->tick );
 
 		if( pool->stop || pool->error )
 			break;
+		copper_eval_iteration(j, 1, 0);
+		j++;
 	} 
 
 	/* We are exiting: tell the main thread. 

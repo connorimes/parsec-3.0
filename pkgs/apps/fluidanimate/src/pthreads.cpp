@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include <float.h>
+#include <copper-eval.h>
 
 #include "fluid.hpp"
 #include "cellpool.hpp"
@@ -96,6 +97,7 @@ typedef struct __thread_args {
  *
  * return - the hamming weight
  */
+
 unsigned int hmgweight(unsigned int x, int *lsb) {
   unsigned int weight=0;
   unsigned int mask= 1;
@@ -1157,6 +1159,7 @@ void *AdvanceFramesMT(void *args)
 
   for(int i = 0; i < targs->frames; ++i) {
     AdvanceFrameMT(targs->tid);
+    copper_eval_iteration(i, 1, 0);
   }
   
   return NULL;
@@ -1172,12 +1175,15 @@ void *AdvanceFramesMT(void *args)
 #else
   for(int i = 0; i < targs->frames; ++i)
 #endif
+  int j = 0;
   {
     pthread_barrier_wait(&visualization_barrier);
     //Phase 1: Compute frame, visualization code blocked
     AdvanceFrameMT(targs->tid);
     pthread_barrier_wait(&visualization_barrier);
     //Phase 2: Visualize, worker threads blocked
+    copper_eval_iteration(j, 1, 0);
+    j++;
   }
 
   return NULL;
@@ -1198,6 +1204,11 @@ void AdvanceFrameVisualization()
 
 int main(int argc, char *argv[])
 {
+  if (copper_eval_init()) {
+    perror("copper_eval_init");
+    exit(1);
+  }
+
 #ifdef PARSEC_VERSION
 #define __PARSEC_STRING(x) #x
 #define __PARSEC_XSTRING(x) __PARSEC_STRING(x)
@@ -1270,7 +1281,9 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_bench_end();
 #endif
-
+  if (copper_eval_finish()) {
+    perror("copper_eval_finish");
+  }
   return 0;
 }
 
