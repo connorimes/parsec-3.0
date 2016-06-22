@@ -529,6 +529,7 @@ vips_thread_work_unit( VipsThread *thr )
 }
 
 #ifdef HAVE_THREADS
+static int counter = 0;
 /* What runs as a thread ... loop, waiting to be told to do stuff.
  */
 static void *
@@ -542,17 +543,16 @@ vips_thread_main_loop( void *a )
 	/* Process work units! Always tick, even if we are stopping, so the
 	 * main thread will wake up for exit. 
 	 */
-	int j = 0;
 	for(;;) {
 		vips_thread_work_unit( thr );
 		im_semaphore_up( &pool->tick );
 
 		if( pool->stop || pool->error )
 			break;
-		if (j % 100 == 0) {
-			copper_eval_iteration(j, 100, 0);
+		int old_counter = __sync_fetch_and_add(&counter, 1);
+		if (old_counter % 100 == 0) {
+			copper_eval_iteration(old_counter, 100, 0);
 		}
-		j++;
 	} 
 
 	/* We are exiting: tell the main thread. 

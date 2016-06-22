@@ -1152,6 +1152,7 @@ void AdvanceFrameMT(int tid)
 #endif
 }
 
+static int counter = 0;
 #ifndef ENABLE_VISUALIZATION
 void *AdvanceFramesMT(void *args)
 {
@@ -1159,8 +1160,9 @@ void *AdvanceFramesMT(void *args)
 
   for(int i = 0; i < targs->frames; ++i) {
     AdvanceFrameMT(targs->tid);
-    if (i % 100 == 0) {
-      copper_eval_iteration(i, 100, 0);
+    int old_counter = __sync_fetch_and_add(&counter, 1);
+    if (old_counter % 100 == 0) {
+      copper_eval_iteration(old_counter, 100, 0);
     }
   }
   
@@ -1177,17 +1179,16 @@ void *AdvanceFramesMT(void *args)
 #else
   for(int i = 0; i < targs->frames; ++i)
 #endif
-  int j = 0;
   {
     pthread_barrier_wait(&visualization_barrier);
     //Phase 1: Compute frame, visualization code blocked
     AdvanceFrameMT(targs->tid);
     pthread_barrier_wait(&visualization_barrier);
     //Phase 2: Visualize, worker threads blocked
-    if (j % 100 == 0) {
-      copper_eval_iteration(j, 100, 0);
+    int old_counter = __sync_fetch_and_add(&counter, 1);
+    if (old_counter % 100 == 0) {
+      copper_eval_iteration(old_counter, 100, 0);
     }
-    j++;
   }
 
   return NULL;

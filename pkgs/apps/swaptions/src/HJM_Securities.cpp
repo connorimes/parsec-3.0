@@ -81,6 +81,7 @@ struct Worker {
 #endif //TBB_VERSION
 
 
+static int counter = 0;
 void * worker(void *arg){
   int tid = *((int *)arg);
   FTYPE pdSwaptionPrice[2];
@@ -111,8 +112,9 @@ void * worker(void *arg){
      assert(iSuccess == 1);
      swaptions[i].dSimSwaptionMeanPrice = pdSwaptionPrice[0];
      swaptions[i].dSimSwaptionStdError = pdSwaptionPrice[1];
-     if (i % 10 == 0) {
-      copper_eval_iteration(i, 10, swaptions[i].dSimSwaptionStdError);
+     int old_counter = __sync_fetch_and_add(&counter, 1);
+     if (old_counter % 10 == 0) {
+      copper_eval_iteration(old_counter, 10, swaptions[i].dSimSwaptionStdError);
     }
    }
 
