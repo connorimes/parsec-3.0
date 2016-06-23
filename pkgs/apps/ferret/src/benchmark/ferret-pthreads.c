@@ -409,7 +409,7 @@ void *t_out (void *dummy)
 
 		cnt_dequeue++;
 		
-		fprintf(stderr, "(%d,%d)\n", cnt_enqueue, cnt_dequeue);
+		// fprintf(stderr, "(%d,%d)\n", cnt_enqueue, cnt_dequeue);
 	}
 
 	assert(cnt_enqueue == cnt_dequeue);
