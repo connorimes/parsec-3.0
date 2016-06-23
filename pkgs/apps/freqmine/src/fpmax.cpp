@@ -89,7 +89,6 @@ memory** fp_tree_buf;
 memory* database_buf;
 int **new_data_num;
 
-
 void printLen()
 {
 	int i, j;

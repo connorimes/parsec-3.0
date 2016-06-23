@@ -1025,6 +1025,7 @@ main( int argc, char **argv )
 	}
 
 	im_close_plugins();
+
 	if (copper_eval_finish()) {
 		perror("copper_eval_finish");
 	}

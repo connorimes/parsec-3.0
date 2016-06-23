@@ -1288,8 +1288,7 @@ void FP_tree::release_node_array_before_mining(int sequence, int thread, int wor
 
 }
 
-int counter = 0;
-
+static int counter = 0;
 int FP_tree::FP_growth_first(FSout* fout)
 {
 	int sequence;
@@ -1421,7 +1420,6 @@ int FP_tree::FP_growth_first(FSout* fout)
 				local_fp_tree_buf->freebuf(fptree->MR_tree, fptree->MC_tree, fptree->MB_tree);
 			}else{             
 				fptree->FP_growth(thread, fout);
-
 				int old_counter = __sync_fetch_and_add(&counter, 1);
 				if (old_counter % 4 == 0) {
 					copper_eval_iteration(old_counter, 4, 0);

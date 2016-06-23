@@ -114,6 +114,7 @@ struct rank_data
 
 struct queue q_rank_out;
 
+
 /* ------- The Helper Functions ------- */
 int cnt_enqueue;
 int cnt_dequeue;
@@ -373,10 +374,10 @@ void *t_rank (void *dummy)
 	return NULL;
 }
 
+static int counter = 0;
 void *t_out (void *dummy)
 {
 	struct rank_data *rank;
-	int count;
 	while (1)
 	{
 		if(dequeue(&q_rank_out, &rank) < 0)
@@ -401,10 +402,10 @@ void *t_out (void *dummy)
 		free(rank->name);
 		free(rank);
 
-		if(count % 10 == 0) {
+		int old_counter = __sync_fetch_and_add(&counter, 1);
+		if(old_counter % 10 == 0) {
 			copper_eval_iteration(cnt_dequeue, 10, 0);
 		}
-		count++;
 
 		cnt_dequeue++;
 		

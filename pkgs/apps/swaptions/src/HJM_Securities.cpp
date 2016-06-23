@@ -30,10 +30,10 @@ tbb::cache_aligned_allocator<parm> memory_parm;
 #endif // TBB_VERSION
 #endif //ENABLE_THREADS
 
+
 #ifdef ENABLE_PARSEC_HOOKS
 #include <hooks.h>
 #endif
-
 
 int NUM_TRIALS = DEFAULT_NUM_TRIALS;
 int nThreads = 1;
@@ -115,7 +115,7 @@ void * worker(void *arg){
      int old_counter = __sync_fetch_and_add(&counter, 1);
      if (old_counter % 10 == 0) {
       copper_eval_iteration(old_counter, 10, swaptions[i].dSimSwaptionStdError);
-    }
+     }
    }
 
    return NULL;

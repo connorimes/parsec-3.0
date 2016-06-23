@@ -97,7 +97,6 @@ typedef struct __thread_args {
  *
  * return - the hamming weight
  */
-
 unsigned int hmgweight(unsigned int x, int *lsb) {
   unsigned int weight=0;
   unsigned int mask= 1;
@@ -1286,6 +1285,7 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_bench_end();
 #endif
+
   if (copper_eval_finish()) {
     perror("copper_eval_finish");
   }

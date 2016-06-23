@@ -85,9 +85,9 @@ int main (int argc, char* argv[])
 	}
 
 	if (copper_eval_init()) {
-    perror("copper_eval_init");
-    exit(1);
-  }
+		perror("copper_eval_init");
+		exit(1);
+	}
 
 	THREAD_DIVISION_PARAMETERS<float>& parameters = *THREAD_DIVISION_PARAMETERS<float>::Singleton();
 	parameters.grid_divisions_3d = VECTOR_3D<int> (5, 5, 5);
@@ -99,8 +99,8 @@ int main (int argc, char* argv[])
 	delete (THREAD_POOL::Singleton());
 
 	if (copper_eval_finish()) {
-    perror("copper_eval_finish");
-  }
+		perror("copper_eval_finish");
+	}
 
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_bench_end();
