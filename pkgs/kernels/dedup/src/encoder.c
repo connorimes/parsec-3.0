@@ -440,6 +440,9 @@ void *Compress(void * targs) {
       r = queue_enqueue(&reorder_que[qid], &send_buf, ITEM_PER_INSERT);
       assert(r>=1);
     }
+
+    int old_counter = __sync_fetch_and_add(&counter, 1);
+    copper_eval_iteration(old_counter, 0);
   }
 
   //Enqueue left over items
@@ -447,9 +450,6 @@ void *Compress(void * targs) {
     r = queue_enqueue(&reorder_que[qid], &send_buf, ITEM_PER_INSERT);
     assert(r>=1);
   }
-
-  int old_counter = __sync_fetch_and_add(&counter, 1);
-  copper_eval_iteration(old_counter, 0);
 
   ringbuffer_destroy(&recv_buf);
   ringbuffer_destroy(&send_buf);
