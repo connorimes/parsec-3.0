@@ -113,9 +113,7 @@ void * worker(void *arg){
      swaptions[i].dSimSwaptionMeanPrice = pdSwaptionPrice[0];
      swaptions[i].dSimSwaptionStdError = pdSwaptionPrice[1];
      int old_counter = __sync_fetch_and_add(&counter, 1);
-     if (old_counter % 10 == 0) {
-      copper_eval_iteration(old_counter, 10, swaptions[i].dSimSwaptionStdError);
-     }
+     copper_eval_iteration(old_counter, swaptions[i].dSimSwaptionStdError);
    }
 
    return NULL;

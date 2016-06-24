@@ -61,7 +61,7 @@ Simulate_To_Frame (const int frame_input)
 	while (current_frame < frame_input)
 	{
 		LOG::Push_Scope ("FRAME", "Frame %d", current_frame + 1);
-		copper_eval_iteration(current_frame, 1, 0);
+		copper_eval_iteration(current_frame, 0);
 		Preprocess_Frame (current_frame + 1);
 		Advance_To_Target_Time (Time_At_Frame (current_frame + 1));
 		Postprocess_Frame (++current_frame);

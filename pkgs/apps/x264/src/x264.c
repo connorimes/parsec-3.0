@@ -883,7 +883,7 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
 
         i_frame++;
 
-        copper_eval_iteration(i_frame, 1, i_file);
+        copper_eval_iteration(i_frame, i_file);
 
         /* update status line (up to 1000 times per input file) */
         if( opt->b_progress && i_frame % i_update_interval == 0 )

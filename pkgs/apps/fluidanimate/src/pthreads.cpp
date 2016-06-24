@@ -1160,9 +1160,7 @@ void *AdvanceFramesMT(void *args)
   for(int i = 0; i < targs->frames; ++i) {
     AdvanceFrameMT(targs->tid);
     int old_counter = __sync_fetch_and_add(&counter, 1);
-    if (old_counter % 100 == 0) {
-      copper_eval_iteration(old_counter, 100, 0);
-    }
+    copper_eval_iteration(old_counter, 0);
   }
   
   return NULL;
@@ -1185,9 +1183,7 @@ void *AdvanceFramesMT(void *args)
     pthread_barrier_wait(&visualization_barrier);
     //Phase 2: Visualize, worker threads blocked
     int old_counter = __sync_fetch_and_add(&counter, 1);
-    if (old_counter % 100 == 0) {
-      copper_eval_iteration(old_counter, 100, 0);
-    }
+    copper_eval_iteration(old_counter, 0);
   }
 
   return NULL;

@@ -403,9 +403,7 @@ void *t_out (void *dummy)
 		free(rank);
 
 		int old_counter = __sync_fetch_and_add(&counter, 1);
-		if(old_counter % 10 == 0) {
-			copper_eval_iteration(cnt_dequeue, 10, 0);
-		}
+		copper_eval_iteration(cnt_dequeue, 0);
 
 		cnt_dequeue++;
 		

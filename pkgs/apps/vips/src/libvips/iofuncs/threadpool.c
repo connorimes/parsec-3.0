@@ -550,9 +550,7 @@ vips_thread_main_loop( void *a )
 		if( pool->stop || pool->error )
 			break;
 		int old_counter = __sync_fetch_and_add(&counter, 1);
-		if (old_counter % 100 == 0) {
-			copper_eval_iteration(old_counter, 100, 0);
-		}
+		copper_eval_iteration(old_counter, 0);
 	} 
 
 	/* We are exiting: tell the main thread. 

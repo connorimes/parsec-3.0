@@ -1421,9 +1421,7 @@ int FP_tree::FP_growth_first(FSout* fout)
 			}else{             
 				fptree->FP_growth(thread, fout);
 				int old_counter = __sync_fetch_and_add(&counter, 1);
-				if (old_counter % 4 == 0) {
-					copper_eval_iteration(old_counter, 4, 0);
-				}
+				copper_eval_iteration(old_counter, 0);
 				local_list->top = listlen-1;
 			}
 			release_node_array_after_mining(sequence, thread, workingthread);

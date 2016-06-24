@@ -443,7 +443,7 @@ int main (int argc, char **argv)
 #else
     int j;
     for (j=0; j<NUM_RUNS; j++) {
-        copper_eval_iteration(j, 1, 0);
+        copper_eval_iteration(j, 0);
 
         // handle the pthreads ourselves to work around bug --CKI 2014-10-07
         int *tids;

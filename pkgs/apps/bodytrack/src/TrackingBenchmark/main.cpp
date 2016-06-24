@@ -254,7 +254,7 @@ int mainPthreads(string path, int cameras, int frames, int particles, int layers
 #endif
 	for(int i = 0; i < frames; i++)														//process each set of frames
 	{
-		copper_eval_iteration(i, 1, 0);
+		copper_eval_iteration(i, 0);
 		cout << "Processing frame " << i << endl;
 		if(!pf.Update((float)i))														//Run particle filter step
 		{	cout << "Error loading observation data" << endl;

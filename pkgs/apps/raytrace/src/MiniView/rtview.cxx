@@ -491,7 +491,7 @@ int main(int argc, char* argv[])
     int frame = 0;
     do {
       render();
-      copper_eval_iteration(frame, 1, 0);
+      copper_eval_iteration(frame, 0);
       frame++;
     } while(!(__builtin_expect(framesToRender > 0,0) && frame >= framesToRender));
 #ifdef ENABLE_PARSEC_HOOKS
