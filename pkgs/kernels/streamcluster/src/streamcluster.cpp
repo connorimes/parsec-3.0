@@ -15,6 +15,7 @@
 #include <math.h>
 #include <sys/resource.h>
 #include <limits.h>
+#include <copper-eval.h>
 
 #ifdef ENABLE_THREADS
 #include <pthread.h>
@@ -1833,6 +1834,7 @@ void outcenterIDs( Points* centers, long* centerIDs, char* outfile ) {
   fclose(fp);
 }
 
+static int counter = 0;
 void streamCluster( PStream* stream, 
 		    long kmin, long kmax, int dim,
 		    long chunksize, long centersize, char* outfile )
@@ -1888,6 +1890,9 @@ void streamCluster( PStream* stream,
 
     size_t numRead  = stream->read(block, dim, chunksize ); 
     fprintf(stderr,"read %d points\n",numRead);
+
+    int old_counter = __sync_fetch_and_add(&counter, 1);
+    copper_eval_iteration(old_counter, numRead);
 
     if( stream->ferror() || numRead < (unsigned int)chunksize && !stream->feof() ) {
       fprintf(stderr, "error reading data!\n");
@@ -1994,7 +1999,10 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-
+  if (copper_eval_init()) {
+    perror("copper_eval_init");
+    exit(1);
+  }
 
   kmin = atoi(argv[1]);
   kmax = atoi(argv[2]);
@@ -2034,6 +2042,10 @@ int main(int argc, char **argv)
 #endif
 
   delete stream;
+
+  if (copper_eval_finish()) {
+    perror("copper_eval_finish");
+  }
 
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_bench_end();

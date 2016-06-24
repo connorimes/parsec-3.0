@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <copper-eval.h>
 
 #include "util.h"
 #include "dedupdef.h"
@@ -394,6 +395,7 @@ void sub_Compress(chunk_t *chunk) {
  *  - Enqueue each item into send queue
  */
 #ifdef ENABLE_PTHREADS
+static int counter = 0;
 void *Compress(void * targs) {
   struct thread_args *args = (struct thread_args *)targs;
   const int qid = args->tid / MAX_THREADS_PER_QUEUE;
@@ -445,6 +447,9 @@ void *Compress(void * targs) {
     r = queue_enqueue(&reorder_que[qid], &send_buf, ITEM_PER_INSERT);
     assert(r>=1);
   }
+
+  int old_counter = __sync_fetch_and_add(&counter, 1);
+  copper_eval_iteration(old_counter, 0);
 
   ringbuffer_destroy(&recv_buf);
   ringbuffer_destroy(&send_buf);

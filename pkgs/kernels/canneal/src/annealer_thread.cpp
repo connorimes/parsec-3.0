@@ -40,6 +40,8 @@
 #include <fstream>
 #include "rng.h"
 
+#include <copper-eval.h>
+
 using std::cout;
 using std::endl;
 
@@ -47,6 +49,7 @@ using std::endl;
 //*****************************************************************************************
 //
 //*****************************************************************************************
+static int counter = 0;
 void annealer_thread::Run()
 {
 	int accepted_good_moves=0;
@@ -86,6 +89,8 @@ void annealer_thread::Run()
 			}
 		}
 		temp_steps_completed++;
+		int old_counter = __sync_fetch_and_add(&counter, 1);
+		copper_eval_iteration(old_counter, 0);
 #ifdef ENABLE_THREADS
 		pthread_barrier_wait(&_barrier);
 #endif

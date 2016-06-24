@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <vector>
+#include <copper-eval.h>
 
 #ifdef ENABLE_THREADS
 #include <pthread.h>
@@ -54,6 +55,10 @@ void* entry_pt(void*);
 
 
 int main (int argc, char * const argv[]) {
+	if (copper_eval_init()) {
+		perror("copper_eval_init");
+		exit(1);
+	}
 #ifdef PARSEC_VERSION
 #define __PARSEC_STRING(x) #x
 #define __PARSEC_XSTRING(x) __PARSEC_STRING(x)
@@ -131,6 +136,9 @@ int main (int argc, char * const argv[]) {
 	__parsec_bench_end();
 #endif
 
+	if (copper_eval_finish()) {
+		perror("copper_eval_finish");
+	}
 	return 0;
 }
 

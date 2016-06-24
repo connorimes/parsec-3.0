@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <string.h>
+#include <copper-eval.h>
 
 #include "util.h"
 #include "debug.h"
@@ -152,10 +153,19 @@ int main(int argc, char** argv) {
   }
 #endif
 
+  if (copper_eval_init()) {
+    perror("copper_eval_init");
+    exit(1);
+  }
+
   if (compress) {
     Encode(conf);
   } else {
     Decode(conf);
+  }
+
+  if (copper_eval_finish()) {
+    perror("copper_eval_finish");
   }
 
   free(conf);
