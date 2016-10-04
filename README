@@ -1,3 +1,46 @@
+For Proteus:
+
+We are only using the x264 application with the gcc-hooks config.
+
+The energymon-default, heartbeats-simple, and poet libraries must be installed
+where pkg-config can find them.
+
+To build, always clean and uninstall first:
+
+bin/parsecmgmt -c gcc-hooks -p x264 -a clean
+bin/parsecmgmt -c gcc-hooks -p x264 -a uninstall
+bin/parsecmgmt -c gcc-hooks -p x264 -a build
+
+To run:
+
+The same environment variables are used as with the radar application, but with
+the "X264_" prefix instead of "RADAR_".
+For example:
+
+X264_WINDOW_SIZE=50 \
+X264_PERFORMANCE_GOAL=20 \
+X264_OPTIMIZATION_TYPE=ACCURACY \
+X264_POET_CONTROL_CONFIG=x264_control_config \
+X264_POET_CONTEXT_TYPE=APPLICATION \
+X264_POET_CONTEXT_CONFIG=x264_context_config \
+./pkgs/apps/x264/inst/amd64-linux.gcc-hooks/bin/x264 --quiet --qp 20 --partitions b8x8,i4x4 --direct auto --b-pyramid --weightb --mixed-refs --no-fast-pskip --me umh --analyse b8x8,i4x4 --threads $NTHREADS -o test.264 $VIDEO 1920x1080 --frames $FRAMES --ref 5 --subme 5 --merange 16
+
+Set the environment variables or substitute values for NTHREADS, VIDEO, and
+FRAMES as appropriate, e.g.:
+
+export NTHREADS=`nproc`
+export VIDEO=/path/to/video.yuv
+export FRAMES=500
+
+"amd64-linux.gcc-hooks" may differ by platform (e.g. "arm-linux.gcc-hooks").
+
+Application accuracy is modified with the last three parameters:
+
+i_frame_reference (-r, --ref <integer>)
+i_subpel_refine (-m, --subme <integer>)
+i_me_range (--merange <integer>)
+
+
 PARSEC Benchmark Suite 3.0
 ==========================
 

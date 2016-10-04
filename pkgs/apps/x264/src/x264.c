@@ -47,6 +47,19 @@
 #include <hooks.h>
 #endif
 
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <stdio.h>
+#include <time.h>
+#include <unistd.h>
+#include <energymon-default.h>
+#include <heartbeat-acc-pow.h>
+#include <poet.h>
+#include <poet_config.h>
+
 uint8_t *mux_buffer = NULL;
 int mux_buffer_size = 0;
 
@@ -84,6 +97,421 @@ static int (*p_close_outfile)( hnd_t handle );
 static void Help( x264_param_t *defaults, int b_longhelp );
 static int  Parse( int argc, char **argv, x264_param_t *param, cli_opt_t *opt );
 static int  Encode( x264_param_t *param, cli_opt_t *opt );
+
+
+typedef struct x264_ctl_state {
+  unsigned int id;
+  int frame_reference;
+  int me_range;
+  int subpel_refine;
+} x264_ctl_state;
+
+static x264_ctl_state global_ctx = {
+  .id = 0,
+  .frame_reference = 5,
+  .me_range = 16,
+  .subpel_refine = 7,
+};
+
+static energymon em;
+static heartbeat_acc_pow_context hb;
+static heartbeat_acc_pow_record* hb_window_buffer = NULL;
+static poet_state* poet = NULL;
+static poet_control_state_t* poet_control_states = NULL;
+static void* poet_apply_states = NULL;
+static const char* const ENV_PERF_GOAL = "X264_PERFORMANCE_GOAL";
+static const char* const ENV_OPTIMIZATION_TYPE = "X264_OPTIMIZATION_TYPE";
+static const char* const ENV_OPTIMIZATION_TYPE_ACCURACY = "ACCURACY";
+static const char* const ENV_OPTIMIZATION_TYPE_POWER = "POWER";
+static const char* const ENV_POET_CONTROL_CONFIG = "X264_POET_CONTROL_CONFIG";
+// whether to use application or system configurations (defaults to app)
+static const char* const ENV_POET_CONTEXT_TYPE = "X264_POET_CONTEXT_TYPE";
+static const char* const ENV_POET_CONTEXT_APPLICATION = "APPLICATION";
+static const char* const ENV_POET_CONTEXT_SYSTEM = "SYSTEM";
+static const char* const ENV_POET_CONTEXT_CONFIG = "X264_POET_CONTEXT_CONFIG";
+typedef enum X264_TRADEOFF_TYPE {
+  PERFORMANCE = 0,
+  ACCURACY,
+  POWER,
+} X264_TRADEOFF_TYPE;
+// TODO: Select constraint and optimization type at runtime
+static X264_TRADEOFF_TYPE poet_constraint = PERFORMANCE;
+static X264_TRADEOFF_TYPE poet_optimization = ACCURACY;
+static const char* const ENV_WINDOW_SIZE = "X264_WINDOW_SIZE";
+
+static inline void finish_and_exit(int code);
+
+static inline uint64_t x264_gettime_ns() {
+  static const uint64_t ONE_BILLION = 1000000000;
+  struct timespec time_info;
+  clock_gettime(CLOCK_REALTIME, &time_info);
+  return (uint64_t) time_info.tv_sec * ONE_BILLION + (uint64_t) time_info.tv_nsec;
+}
+
+static inline uint64_t x264_get_energy_uj() {
+  assert(em.fread != NULL);
+  uint64_t uj;
+  errno = 0;
+  uj = em.fread(&em);
+  if (uj == 0 && errno != 0) {
+    perror("x264_get_energy_uj:em.fread");
+  }
+  return uj;
+}
+
+static inline unsigned int get_num_ctxs(FILE* rfile) {
+  char line[BUFSIZ];
+  unsigned int linenum = 0;
+  char id_str[BUFSIZ];
+  unsigned int nstates = 0;
+  unsigned long nstates_tmp;
+  while (fgets(line, BUFSIZ, rfile) != NULL) {
+    linenum++;
+    if (line[0] == '#') {
+      continue;
+    }
+    if (sscanf(line, "%s", id_str) < 1) {
+      fprintf(stderr, "get_num_ctxs: Syntax error, line %u.\n", linenum);
+      return 0;
+    }
+    nstates_tmp = atoi(id_str);
+    nstates_tmp++;
+    if (nstates_tmp != nstates + 1) {
+      fprintf(stderr, "get_num_ctxs: States are missing or out of order.\n");
+      return 0;
+    }
+    nstates = nstates_tmp;
+  }
+  return nstates;
+}
+
+/* File format:
+  #id    nref    range  refine
+  0      0       0      0
+ */
+int x264_ctl_state_load_file(const char* path,
+                             x264_ctl_state** ctxs,
+                             unsigned int* num_ctxs) {
+  assert(path != NULL);
+  assert(ctxs != NULL);
+  assert(num_ctxs != NULL);
+
+  x264_ctl_state* states;
+  FILE * rfile;
+  char line[BUFSIZ];
+  unsigned int linenum = 0;
+  char argA[BUFSIZ];
+  char argB[BUFSIZ];
+  char argC[BUFSIZ];
+  char argD[BUFSIZ];
+  unsigned long id;
+
+  rfile = fopen(path, "r");
+  if (rfile == NULL) {
+    perror(path);
+    return -1;
+  }
+
+  *num_ctxs = get_num_ctxs(rfile);
+  if (*num_ctxs == 0) {
+    fclose(rfile);
+    return -1;
+  }
+  rewind(rfile);
+
+  // allocate the space
+  states = (x264_ctl_state*) malloc(*num_ctxs * sizeof(x264_ctl_state));
+  if (states == NULL) {
+    perror("x264_ctl_state_load_file:malloc");
+    fclose(rfile);
+    return -1;
+  }
+
+  // now iterate again to get the lines and fill in the data structure
+  while (fgets(line, BUFSIZ, rfile) != NULL) {
+    linenum++;
+    if (line[0] == '#') {
+      continue;
+    }
+
+    if (sscanf(line, "%s %s %s %s", argA, argB, argC, argD) < 4) {
+      fprintf(stderr, "x264_ctl_state_load_file: Syntax error, line %u\n", linenum);
+      fclose(rfile);
+      free(states);
+      return -1;
+    }
+    id = atoi(argA);
+    states[id].id = id;
+    states[id].frame_reference = atoi(argB);
+    states[id].subpel_refine = atoi(argC);
+    states[id].me_range = atoi(argD);
+  }
+
+  fclose(rfile);
+  *ctxs = states;
+  return 0;
+}
+
+int x264_ctl_state_equal(const x264_ctl_state* a, const x264_ctl_state* b) {
+  assert(a);
+  assert(b);
+  return a->frame_reference == b->frame_reference &&
+         a->me_range == b->me_range &&
+         a->subpel_refine == b->subpel_refine;
+}
+
+// poet_apply_func
+void apply_control_context(void* states,
+                           unsigned int num_states,
+                           unsigned int id,
+                           unsigned int last_id) {
+  assert(states != NULL);
+  assert(id < num_states);
+  (void) num_states; // silence the compiler
+  (void) last_id; // silence the compiler
+  x264_ctl_state* rc = (x264_ctl_state*) states;
+  fprintf(stdout, "Applying POET context id: %u\n", id);
+  // TODO: search the states array if IDs don't match
+  assert(rc[id].id == id);
+  memcpy(&global_ctx, &rc[id], sizeof(x264_ctl_state));
+}
+
+// poet_curr_state_func
+int get_control_context_state_id(const void* states,
+                                 unsigned int num_states,
+                                 unsigned int* curr_state_id) {
+  assert(states != NULL);
+  assert(curr_state_id != NULL);
+  unsigned int i;
+  int ret = 1;
+  const x264_ctl_state* ctxs = (x264_ctl_state*) states;
+  for (i = 0; i < num_states; i++) {
+    if (x264_ctl_state_equal(&global_ctx, &ctxs[i])) {
+      *curr_state_id = ctxs[i].id;
+      ret = 0;
+      break;
+    }
+  }
+  if (ret) {
+    fprintf(stdout, "Failed to get current POET state id\n");
+  } else {
+    fprintf(stdout, "Got current POET state id: %u\n", *curr_state_id);
+  }
+  return ret;
+}
+
+void get_tradeoff_value(X264_TRADEOFF_TYPE tradeoff, double* val, int invert) {
+  assert(val != NULL);
+  switch (tradeoff) {
+    case PERFORMANCE:
+      *val = hb_acc_pow_get_window_perf(&hb);
+      break;
+    case ACCURACY:
+      *val = hb_acc_pow_get_window_accuracy_rate(&hb);
+      break;
+    case POWER:
+      *val = hb_acc_pow_get_window_power(&hb);
+      break;
+    default:
+      assert(0);
+  }
+  if (invert) {
+    *val = 1.0 / *val;
+  }
+}
+
+static inline void x264_hb_init(unsigned int window_size) {
+  assert(hb_window_buffer == NULL);
+  const char* logfile = "heartbeat.log";
+  int fd;
+  if ((hb_window_buffer = malloc(window_size * sizeof(heartbeat_acc_pow_record))) == NULL) {
+    perror("x264_hb_init:malloc");
+    finish_and_exit(1);
+  }
+  if ((fd = open(logfile, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)) <= 0) {
+    perror(logfile);
+    finish_and_exit(1);
+  }
+  if (heartbeat_acc_pow_init(&hb, window_size, hb_window_buffer, fd, NULL) || hb_acc_pow_log_header(fd)) {
+    perror("Failed to initialize heartbeat");
+    finish_and_exit(1);
+  }
+  fprintf(stdout, "Heartbeat initialized with window size %u...\n", window_size);
+}
+
+static inline void x264_hb_finish() {
+  int fd;
+  if (hb_window_buffer != NULL) {
+    fd = hb_acc_pow_get_log_fd(&hb);
+    if (fd > 0) {
+      // write remaining log data and close log
+      if (hb_acc_pow_log_window_buffer(&hb, fd)) {
+        perror("x264_hb_finish:hb_acc_pow_log_window_buffer");
+      }
+      if (close(fd)) {
+        perror("x264_hb_finish:close");
+      }
+    }
+    free(hb_window_buffer);
+    hb_window_buffer = NULL;
+    fprintf(stdout, "Heartbeat buffer is free'd...\n");
+  }
+}
+
+static inline void x264_em_init() {
+  assert(em.finit == NULL);
+  char em_source[128] = { '\0' };
+  if (energymon_get_default(&em) || em.finit(&em)) {
+    perror("Failed to initialize energymon");
+    finish_and_exit(1);
+  }
+  em.fsource(em_source, sizeof(em_source));
+  fprintf(stdout, "Energymon is initialized for source... %s\n", em_source);
+}
+
+static inline void x264_em_finish() {
+  if (em.ffinish != NULL) {
+    if (em.ffinish(&em)) {
+      perror("x264_em_finish:em.ffinish");
+    }
+    memset(&em, 0, sizeof(energymon));
+    fprintf(stdout, "Energymon is finished...\n");
+  }
+}
+
+static inline void x264_poet_init(unsigned int window_size) {
+  assert(poet == NULL);
+  double poet_perf_goal = 100.0;
+  unsigned int poet_num_control_states = 0;
+  unsigned int poet_num_system_states = 0;
+  poet_apply_func poet_apply_fn = NULL;
+  poet_curr_state_func poet_curr_state_fn = NULL;
+  const char* poet_perf_goal_env = getenv(ENV_PERF_GOAL);
+  const char* poet_optimization_config_env = getenv(ENV_OPTIMIZATION_TYPE);
+  const char* poet_control_config_env = getenv(ENV_POET_CONTROL_CONFIG);
+  const char* poet_context_type_env = getenv(ENV_POET_CONTEXT_TYPE);
+  const char* poet_context_config_env = getenv(ENV_POET_CONTEXT_CONFIG);
+  // get the performance goal
+  if (poet_perf_goal_env != NULL) {
+    poet_perf_goal = atof(poet_perf_goal_env);
+    if (poet_perf_goal <= 0) {
+      fprintf(stderr, "%s must be > 0\n", ENV_PERF_GOAL);
+      finish_and_exit(1);
+    }
+  }
+  // get the optimization type
+  if (poet_optimization_config_env != NULL) {
+    if (strcmp(poet_optimization_config_env, ENV_OPTIMIZATION_TYPE_ACCURACY) == 0) {
+      poet_optimization = ACCURACY;
+    } else if (strcmp(poet_optimization_config_env, ENV_OPTIMIZATION_TYPE_POWER) == 0) {
+      poet_optimization = POWER;
+    } else {
+      fprintf(stderr, "%s must be either \"%s\" (default) or \"%s\"\n",
+              ENV_OPTIMIZATION_TYPE, ENV_OPTIMIZATION_TYPE_ACCURACY, ENV_OPTIMIZATION_TYPE_POWER);
+      finish_and_exit(1);
+    }
+  }
+  // get the control configs
+  if (poet_control_config_env == NULL) {
+    // create default
+    poet_num_control_states = 1;
+    if ((poet_control_states = malloc(sizeof(poet_control_state_t))) == NULL) {
+      perror("x264_poet_init:malloc");
+      finish_and_exit(1);
+    }
+    poet_control_states->id = 0;
+    poet_control_states->speedup = 1;
+    poet_control_states->cost = 1;
+  } else if (get_control_states(poet_control_config_env, &poet_control_states, &poet_num_control_states)) {
+    fprintf(stderr, "Failed to load POET control file %s\n", poet_control_config_env);
+    finish_and_exit(1);
+  }
+  // get the context configs
+  if (poet_context_type_env == NULL || strncmp(poet_context_type_env, ENV_POET_CONTEXT_APPLICATION, strlen(ENV_POET_CONTEXT_APPLICATION) + 1) == 0) {
+    // APPLICATION context
+    poet_apply_fn = apply_control_context;
+    poet_curr_state_fn = get_control_context_state_id;
+    if (poet_context_config_env == NULL) {
+      // create default APPLICATION context
+      poet_num_system_states = 1;
+      if ((poet_apply_states = malloc(sizeof(x264_ctl_state))) == NULL) {
+        perror("x264_poet_init:malloc");
+        finish_and_exit(1);
+      }
+      memcpy(poet_apply_states, &global_ctx, sizeof(x264_ctl_state));
+    } else if (x264_ctl_state_load_file(poet_context_config_env, (x264_ctl_state**) &poet_apply_states, &poet_num_system_states)) {
+      fprintf(stderr, "Failed to load POET context file %s\n", poet_context_config_env);
+      finish_and_exit(1);
+    }
+    // try and discover the starting context
+    global_ctx.id = poet_num_system_states - 1; // default to highest state
+    if (get_control_context_state_id(poet_apply_states, poet_num_system_states, &global_ctx.id)) {
+      printf("Assuming POET state %u\n", global_ctx.id);
+    }
+  } else if (strncmp(poet_context_type_env, ENV_POET_CONTEXT_SYSTEM, strlen(ENV_POET_CONTEXT_SYSTEM) + 1) == 0) {
+    // SYSTEM context
+    poet_apply_fn = apply_cpu_config;
+    poet_curr_state_fn = get_current_cpu_state;
+    // if poet_context_config_env is NULL, POET will try to load from default location
+    if (get_cpu_states(poet_context_config_env, (poet_cpu_state_t**) &poet_apply_states, &poet_num_system_states)) {
+      perror("Failed to load POET system states");
+      finish_and_exit(1);
+    }
+  } else {
+    fprintf(stderr, "%s must be either %s or %s\n", ENV_POET_CONTEXT_TYPE, ENV_POET_CONTEXT_APPLICATION, ENV_POET_CONTEXT_SYSTEM);
+    finish_and_exit(1);
+  }
+  // verify that the control and context configs align
+  if (poet_num_control_states != poet_num_system_states) {
+    fprintf(stderr, "POET control and system state counts do not align\n");
+    finish_and_exit(1);
+  }
+  // initialize
+  poet = poet_init(poet_perf_goal,
+                   poet_num_system_states, poet_control_states, poet_apply_states,
+                   poet_apply_fn, poet_curr_state_fn,
+                   window_size, 1, "poet.log");
+  if (poet == NULL) {
+    fprintf(stderr, "Failed to initialize POET\n");
+    finish_and_exit(1);
+  }
+  fprintf(stdout, "POET is initialized with %u state(s)...\n", poet_num_system_states);
+}
+
+static inline void x264_poet_finish() {
+  free(poet_control_states);
+  poet_control_states = NULL;
+  free(poet_apply_states);
+  poet_apply_states = NULL;
+  if (poet != NULL) {
+    poet_destroy(poet);
+    poet = NULL;
+    fprintf(stdout, "POET is destroyed...\n");
+  }
+}
+
+static inline void hb_em_poet_init() {
+  // initialize performance/power monitoring/control tools
+  unsigned int window_size = 50;
+  const char* window_size_env = getenv(ENV_WINDOW_SIZE);
+  if (window_size_env != NULL) {
+    window_size = atoi(window_size_env);
+    if (window_size == 0) {
+      fprintf(stderr, "%s must be > 0\n", ENV_WINDOW_SIZE);
+      finish_and_exit(1);
+    }
+  }
+  x264_hb_init(window_size);
+  x264_em_init();
+  x264_poet_init(window_size);
+}
+
+static inline void finish_and_exit(int code) {
+  x264_poet_finish();
+  x264_em_finish();
+  x264_hb_finish();
+  exit(code);
+}
 
 
 /****************************************************************************
@@ -127,12 +555,20 @@ int main( int argc, char **argv )
     /* Control-C handler */
     signal( SIGINT, SigIntHandler );
 
+    // load current state into global context
+    global_ctx.frame_reference = param.i_frame_reference;
+    global_ctx.me_range = param.analyse.i_me_range;
+    global_ctx.subpel_refine = param.analyse.i_subpel_refine;
+    hb_em_poet_init();
+
     ret = Encode( &param, &opt );
 
 #ifdef PTW32_STATIC_LIB
     pthread_win32_thread_detach_np();
     pthread_win32_process_detach_np();
 #endif
+
+    finish_and_exit(0);
 
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_bench_end();
@@ -852,6 +1288,11 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
     __parsec_roi_begin();
 #endif
 
+    int i;
+    uint64_t time_start, time_end, energy_start, energy_end;
+    time_end = x264_gettime_ns();
+    energy_end = x264_get_energy_uj();
+
     /* Encode frames */
     for( i_frame = 0, i_file = 0; b_ctrl_c == 0 && (i_frame < i_frame_total || i_frame_total == 0); )
     {
@@ -872,6 +1313,27 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
         i_file += Encode_frame( h, opt->hout, &pic );
 
         i_frame++;
+
+        time_start = time_end;
+        energy_start = energy_end;
+        if (i_frame > 0) {
+          time_end = x264_gettime_ns();
+          energy_end = x264_get_energy_uj();
+          heartbeat_acc_pow(&hb, i_frame, 1, time_start, time_end, i_file, energy_start, energy_end);
+          double constraint_val = 0;
+          double optimization_val = 0;
+          get_tradeoff_value(poet_constraint, &constraint_val, 0);
+          // optimization in current version of POET only minimizes
+          // Have to invert when we want to maximize the optimization (performance, accuracy)
+          get_tradeoff_value(poet_optimization, &optimization_val, poet_optimization != POWER);
+          poet_apply_control(poet, i_frame, constraint_val, optimization_val);
+        }
+
+        for (i = 0; i < h->param.i_threads; i++) {
+          h->thread[i]->param.analyse.i_subpel_refine = global_ctx.subpel_refine;
+          h->thread[i]->param.i_frame_reference = global_ctx.frame_reference;
+          h->thread[i]->param.analyse.i_me_range = global_ctx.me_range;
+        }
 
         /* update status line (up to 1000 times per input file) */
         if( opt->b_progress && i_frame % i_update_interval == 0 )

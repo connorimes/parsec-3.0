@@ -9,10 +9,10 @@
 source ${PARSECDIR}/config/gcc.bldconf
 
 # Enable PARSEC hooks
-CFLAGS="${CFLAGS} -DENABLE_PARSEC_HOOKS -I${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/include"
-CXXFLAGS="${CXXFLAGS} -DENABLE_PARSEC_HOOKS -I${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/include"
+CFLAGS="${CFLAGS} -DENABLE_PARSEC_HOOKS -I${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/include `pkg-config --cflags energymon-default heartbeats-simple poet` -O2"
+CXXFLAGS="${CXXFLAGS} -DENABLE_PARSEC_HOOKS -I${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/include `pkg-config --cflags energymon-default heartbeats-simple poet` -O2"
 LDFLAGS="${LDFLAGS} -L${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/lib"
-LIBS="${LIBS} -lhooks"
+LIBS="${LIBS} -lhooks `pkg-config --libs --static energymon-default heartbeats-simple poet`"
 
 # Add directory with hooks library to library search path
 if [ -z "${LD_LIBRARY_PATH}" ]; then
