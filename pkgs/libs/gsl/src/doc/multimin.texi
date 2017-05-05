@@ -133,7 +133,9 @@ accuracy of @var{tol}, where @c{$p\cdot g < tol |p| |g|$}
 suitable for most purposes, since line minimization only needs to
 be carried out approximately.    Note that setting @var{tol} to zero will
 force the use of ``exact'' line-searches, which are extremely expensive.
+@end deftypefun
 
+@deftypefun int gsl_multimin_fminimizer_set (gsl_multimin_fminimizer * @var{s}, gsl_multimin_function * @var{f}, const gsl_vector * @var{x}, const gsl_vector * @var{step_size})
 @deftypefunx int gsl_multimin_fminimizer_set (gsl_multimin_fminimizer * @var{s}, gsl_multimin_function * @var{f}, const gsl_vector * @var{x}, const gsl_vector * @var{step_size})
 This function initializes the minimizer @var{s} to minimize the function
 @var{f}, starting from the initial point
