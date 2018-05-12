@@ -16,11 +16,9 @@
 #include <hooks.h>
 #endif
 
-#define HB_ENERGY_IMPL
-#include <heartbeats/hb-energy.h>
 #include <heartbeats/heartbeat-accuracy-power.h>
-#include <poet/poet.h>
-#include <poet/poet_config.h>
+#include <poet.h>
+#include <poet_config.h>
 
 #define PREFIX "BLACKSCHOLES"
 #define USE_POET // Power and performance control
@@ -99,6 +97,7 @@ static inline void hb_poet_init() {
     double power_target;
     unsigned int s_nstates;
     poet_tradeoff_type_t constraint;
+    double constraint_goal;
 
     if(getenv(PREFIX"_MIN_HEART_RATE") == NULL) {
       min_heartrate = 0.0;
@@ -122,10 +121,13 @@ static inline void hb_poet_init() {
     }
     if(getenv(PREFIX"_CONSTRAINT") == NULL) {
       constraint = PERFORMANCE;
+      constraint_goal = (min_heartrate + max_heartrate) / 2.0;
     } else if (strcmp(getenv(PREFIX"_CONSTRAINT"), "POWER") == 0){
       constraint = POWER;
+      constraint_goal = power_target;
     } else {
       constraint = PERFORMANCE;
+      constraint_goal = (min_heartrate + max_heartrate) / 2.0;
     }
     if (getenv(PREFIX"_PERF_PWR_SWITCH_HB") == NULL) {
       perf_pwr_switch = -1;
@@ -137,7 +139,7 @@ static inline void hb_poet_init() {
     heart = heartbeat_acc_pow_init(window_size, 100, "heartbeat.log",
                                    min_heartrate, max_heartrate,
                                    0, 100,
-                                   1, hb_energy_impl_alloc(), power_target, power_target);
+                                   power_target, power_target);
     if (heart == NULL) {
       fprintf(stderr, "Failed to init heartbeat.\n");
       exit(1);
@@ -151,7 +153,7 @@ static inline void hb_poet_init() {
       fprintf(stderr, "Failed to load cpu states.\n");
       exit(1);
     }
-    s_state = poet_init(heart, constraint, s_nstates, s_control_states, s_cpu_states, &apply_cpu_config, &get_current_cpu_state, 1, "poet.log");
+    s_state = poet_init(constraint_goal, constraint, s_nstates, s_control_states, s_cpu_states, &apply_cpu_config, &get_current_cpu_state, window_size, 1, "poet.log");
     if (s_state == NULL) {
       fprintf(stderr, "Failed to init poet.\n");
       exit(1);
@@ -382,10 +384,12 @@ int bs_thread(void *tid_ptr) {
         if((old_counter % (NUM_RUNS / 20)) == 0) {
           heartbeat_acc(heart, counter, 1);
 #ifdef USE_POET
+          heartbeat_record_t hbr;
+          hb_get_current(heart, &hbr);
           if (counter == perf_pwr_switch) {
-              poet_set_constraint_type(s_state, POWER);
+              poet_set_constraint_type(s_state, POWER, hb_get_max_power(heart));
           }
-          poet_apply_control(s_state);
+          poet_apply_control(s_state, hbr_get_tag(&hbr), hbr_get_window_rate(&hbr), hbr_get_window_power(&hbr));
 #endif
         }
 #ifdef ENABLE_OPENMP

@@ -11,7 +11,7 @@
 #endif
 
 #include <heartbeats/heartbeat-accuracy-power.h>
-#include <poet/poet.h>
+#include <poet.h>
 extern heartbeat_t* heart;
 extern poet_state* s_state;
 extern int perf_pwr_switch;
@@ -68,10 +68,12 @@ Simulate_To_Frame (const int frame_input)
 		LOG::Push_Scope ("FRAME", "Frame %d", current_frame + 1);
 		heartbeat_acc(heart, current_frame, 1);
 #ifdef USE_POET
+                heartbeat_record_t hbr;
+                hb_get_current(heart, &hbr);
                 if (current_frame == perf_pwr_switch) {
-                    poet_set_constraint_type(s_state, POWER);
+                    poet_set_constraint_type(s_state, POWER, hb_get_max_power(heart));
                 }
-		poet_apply_control(s_state);
+		poet_apply_control(s_state, hbr_get_tag(&hbr), hbr_get_window_rate(&hbr), hbr_get_window_power(&hbr));
 #endif
 		Preprocess_Frame (current_frame + 1);
 		Advance_To_Target_Time (Time_At_Frame (current_frame + 1));
